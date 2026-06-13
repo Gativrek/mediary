@@ -46,8 +46,10 @@ function saveLibrary() {
 
 // ---------- window ----------
 
+let mainWindow = null;
+
 function createWindow() {
-  const win = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1280,
     height: 850,
     autoHideMenuBar: true,
@@ -59,12 +61,27 @@ function createWindow() {
   });
 
   // Links with target="_blank" open in the system browser, not a new app window.
-  win.webContents.setWindowOpenHandler(({ url }) => {
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: 'deny' };
   });
 
-  win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+}
+
+// Only one Mediary may run at a time — two processes sharing the same JSON
+// library could overwrite each other's changes. If we can't get the lock,
+// another instance is already running: hand off to it and quit.
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
 }
 
 app.whenReady().then(() => {
