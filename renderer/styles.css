@@ -14,7 +14,7 @@
 
 body {
   margin: 0;
-  font-family: "Segoe UI", system-ui, sans-serif;
+  font-family: "Barlow", "Segoe UI", system-ui, sans-serif;
   background: var(--bg);
   color: var(--text);
 }
@@ -129,26 +129,100 @@ header {
   z-index: 5;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
-  padding: 12px 20px;
+  padding: 11px 20px;
   background: rgba(20, 22, 28, 0.55);
   backdrop-filter: blur(24px) saturate(180%);
   border-bottom: 1px solid var(--border-bright);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 8px 24px rgba(0, 0, 0, 0.25);
 }
-header h1 {
-  font-size: 20px;
-  margin: 0 10px 0 0;
-  letter-spacing: 0.3px;
+
+/* brand */
+.brand { display: flex; align-items: center; gap: 9px; margin-right: 4px; }
+.brand-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+.brand-name {
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
   background: linear-gradient(90deg, #cdb9f2, #8db9e8);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
-header input[type=search] { width: 220px; }
-header select { width: auto; }
+
+/* search with leading icon */
+.search-wrap { position: relative; display: flex; align-items: center; }
+.search-ic {
+  position: absolute;
+  left: 11px;
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.search-wrap input[type=search] {
+  width: 230px;
+  padding: 8px 12px 8px 34px;
+  border-radius: 999px;
+}
+
+/* filter pills */
+.filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.filters select {
+  width: auto;
+  border-radius: 999px;
+  padding: 7px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--border-bright);
+  cursor: pointer;
+}
+.filters select:hover { background: rgba(255, 255, 255, 0.08); }
+
 .spacer { flex: 1; }
+
+/* iconified utility cluster */
+.util {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+}
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 999px;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+}
+.icon-btn svg { width: 17px; height: 17px; }
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--text);
+  filter: none;
+}
+
+#btn-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  padding: 8px 16px 8px 13px;
+}
+#btn-add svg { width: 16px; height: 16px; }
 
 /* ---------- card grid ---------- */
 
