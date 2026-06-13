@@ -1,0 +1,28 @@
+{
+  "name": "mediary",
+  "version": "0.2.0",
+  "description": "Mediary — a personal media diary for games, movies, books and more",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^26.15.3",
+    "png-to-ico": "^3.0.1",
+    "sharp": "^0.35.1"
+  },
+  "build": {
+    "appId": "com.gabriel.mediary",
+    "productName": "Mediary",
+    "win": {
+      "icon": "build/icon.ico"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**"
+    ]
+  }
+}

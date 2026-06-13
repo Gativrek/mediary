@@ -1,0 +1,351 @@
+// MediaLog UI logic. All data lives in the main process; everything here goes
+// through window.api (see preload.js). Ratings are stored as integers 0–10
+// (half-stars) and displayed as 0–5 stars.
+
+const TYPES = {
+  game: 'Game', movie: 'Movie', tv: 'TV Show', anime: 'Anime',
+  book: 'Book', music: 'Music', other: 'Other',
+};
+const STATUSES = {
+  completed: 'Completed', 'in-progress': 'In progress', dropped: 'Dropped',
+  backlog: 'Backlog', wishlist: 'Wishlist',
+};
+
+let lib = { media: [], logs: [] };
+let currentMediaId = null;  // media shown in the detail dialog
+let editingMediaId = null;  // media being edited in the entry dialog (null = creating new)
+let editingLogId = null;    // log being edited in the log dialog (null = adding new)
+let entryCover = null;      // image filename chosen in the entry dialog
+
+const $ = (sel) => document.querySelector(sel);
+
+// Escape user text before putting it into innerHTML.
+const esc = (s) => (s ?? '').toString().replace(/[&<>"']/g,
+  (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// ---------- stars ----------
+
+// Read-only star display: gray stars with a gold overlay clipped to the rating.
+function starsHTML(r10) {
+  if (r10 == null) return '<span class="muted small">unrated</span>';
+  return `<span class="stars"><span class="stars-bg">★★★★★</span>` +
+         `<span class="stars-fill" style="width:${r10 * 10}%">★★★★★</span></span>`;
+}
+
+// Clickable star input. Click position picks the value in half-star steps;
+// hovering previews it. Returns { get, set } for reading/writing the value.
+function makeStarInput(root) {
+  root.classList.add('star-input-wrap');
+  root.innerHTML =
+    `<span class="stars stars-lg"><span class="stars-bg">★★★★★</span>` +
+    `<span class="stars-fill">★★★★★</span></span>` +
+    `<span class="star-value"></span>` +
+    `<button type="button" class="link-btn">clear</button>`;
+
+  const stars = root.querySelector('.stars');
+  const fill = root.querySelector('.stars-fill');
+  const valueEl = root.querySelector('.star-value');
+  let value = null;
+
+  function show(v) {
+    fill.style.width = v == null ? '0%' : (v * 10) + '%';
+    valueEl.textContent = v == null ? '—' : (v / 2).toFixed(1) + ' / 5';
+  }
+  function valueFromEvent(e) {
+    const rect = stars.getBoundingClientRect();
+    const frac = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1);
+    return Math.max(1, Math.ceil(frac * 10));
+  }
+
+  stars.addEventListener('mousemove', (e) => show(valueFromEvent(e)));
+  stars.addEventListener('mouseleave', () => show(value));
+  stars.addEventListener('click', (e) => { value = valueFromEvent(e); show(value); });
+  root.querySelector('button').addEventListener('click', () => { value = null; show(null); });
+
+  show(null);
+  return { get: () => value, set: (v) => { value = v; show(v); } };
+}
+
+// ---------- helpers ----------
+
+function logsFor(mediaId) {
+  return lib.logs
+    .filter((l) => l.mediaId === mediaId)
+    .sort((a, b) =>
+      (b.dateConsumed || '').localeCompare(a.dateConsumed || '') ||
+      (b.createdAt || '').localeCompare(a.createdAt || ''));
+}
+const latestLog = (mediaId) => logsFor(mediaId)[0] || null;
+
+function youtubeEmbed(url) {
+  const m = (url || '').match(/(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/|\/live\/)([\w-]{11})/);
+  return m ? `https://www.youtube-nocookie.com/embed/${m[1]}` : null;
+}
+
+const formatDate = (iso) => (iso ? new Date(iso + 'T00:00:00').toLocaleDateString() : '');
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+async function refresh() {
+  lib = await window.api.getLibrary();
+  render();
+}
+
+// ---------- main grid ----------
+
+function render() {
+  const q = $('#search').value.trim().toLowerCase();
+  const type = $('#filter-type').value;
+  const status = $('#filter-status').value;
+  const sort = $('#sort-by').value;
+
+  let items = lib.media.map((m) => ({ m, log: latestLog(m.id) }));
+  if (q) items = items.filter((x) => x.m.title.toLowerCase().includes(q));
+  if (type) items = items.filter((x) => x.m.type === type);
+  if (status) items = items.filter((x) => x.log && x.log.status === status);
+
+  const compare = {
+    recent: (a, b) => ((b.log && b.log.createdAt) || '').localeCompare((a.log && a.log.createdAt) || ''),
+    title: (a, b) => a.m.title.localeCompare(b.m.title),
+    rating: (a, b) => (((b.log && b.log.rating) ?? -1) - ((a.log && a.log.rating) ?? -1)),
+    year: (a, b) => (b.m.releaseYear || 0) - (a.m.releaseYear || 0),
+  }[sort];
+  items.sort(compare);
+
+  $('#grid').innerHTML = items.map(({ m, log }) => `
+    <article class="card" data-id="${m.id}">
+      ${m.coverImage
+        ? `<img class="cover" src="media-img://img/${esc(m.coverImage)}" alt="">`
+        : `<div class="cover-placeholder">${esc((m.title[0] || '?').toUpperCase())}</div>`}
+      <div class="card-body">
+        <h3>${esc(m.title)}</h3>
+        <div class="card-meta">
+          <span class="badge badge-type">${TYPES[m.type] || esc(m.type)}</span>
+          ${m.releaseYear ? `<span class="muted small">${m.releaseYear}</span>` : ''}
+        </div>
+        <div class="card-meta">
+          ${starsHTML(log ? log.rating : null)}
+          ${log ? `<span class="badge badge-${log.status}">${STATUSES[log.status] || ''}</span>` : ''}
+        </div>
+      </div>
+    </article>`).join('');
+
+  $('#empty').style.display = items.length ? 'none' : 'block';
+}
+
+// ---------- detail dialog ----------
+
+function renderDetail() {
+  const m = lib.media.find((x) => x.id === currentMediaId);
+  if (!m) return;
+  const logs = logsFor(m.id);
+
+  $('#detail-content').innerHTML = `
+    <div class="detail-head">
+      ${m.coverImage
+        ? `<img class="cover" src="media-img://img/${esc(m.coverImage)}" alt="">`
+        : `<div class="cover-placeholder">${esc((m.title[0] || '?').toUpperCase())}</div>`}
+      <div>
+        <h2>${esc(m.title)}</h2>
+        <div class="card-meta">
+          <span class="badge badge-type">${TYPES[m.type] || esc(m.type)}</span>
+          ${m.releaseYear ? `<span class="muted">${m.releaseYear}</span>` : ''}
+        </div>
+        <div class="row">
+          <button id="btn-add-log">+ Add log</button>
+          <button id="btn-edit-media" class="ghost">Edit</button>
+          <button id="btn-delete-media" class="danger">Delete</button>
+        </div>
+      </div>
+    </div>
+    <div class="log-list">
+      ${logs.map(logHTML).join('') || '<p class="muted">No logs yet.</p>'}
+    </div>`;
+}
+
+function logHTML(log) {
+  const embed = log.videoUrl ? youtubeEmbed(log.videoUrl) : null;
+  return `
+    <div class="log" data-log-id="${log.id}">
+      <div class="log-head">
+        <span class="muted small">${log.dateConsumed ? formatDate(log.dateConsumed) : 'no date'}</span>
+        <span class="badge badge-${log.status}">${STATUSES[log.status] || ''}</span>
+        ${starsHTML(log.rating)}
+        <span class="spacer"></span>
+        <button class="link-btn log-edit">edit</button>
+        <button class="link-btn log-delete">delete</button>
+      </div>
+      ${log.review ? `<p class="review">${esc(log.review)}</p>` : ''}
+      ${embed
+        ? `<iframe class="video" src="${embed}" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe>`
+        : log.videoUrl
+          ? `<p><a href="${esc(log.videoUrl)}" target="_blank">${esc(log.videoUrl)}</a></p>`
+          : ''}
+    </div>`;
+}
+
+function openDetail(id) {
+  currentMediaId = id;
+  renderDetail();
+  const dlg = $('#detail-dialog');
+  if (!dlg.open) dlg.showModal();
+}
+
+// ---------- entry dialog (new entry, or edit media info) ----------
+
+function openEntryDialog(mediaId) {
+  editingMediaId = mediaId || null;
+  const m = mediaId ? lib.media.find((x) => x.id === mediaId) : null;
+
+  $('#entry-title-h').textContent = m ? 'Edit media' : 'Add entry';
+  $('#f-title').value = m ? m.title : '';
+  $('#f-type').value = m ? m.type : 'game';
+  $('#f-year').value = m && m.releaseYear ? m.releaseYear : '';
+  entryCover = m ? m.coverImage || null : null;
+  updateCoverPreview();
+
+  // When editing, only media info is shown — logs are edited individually.
+  $('#entry-log-section').style.display = m ? 'none' : 'block';
+  if (!m) {
+    $('#f-date').value = todayStr();
+    $('#f-status').value = 'completed';
+    entryRating.set(null);
+    $('#f-review').value = '';
+    $('#f-video').value = '';
+  }
+
+  $('#entry-dialog').showModal();
+}
+
+function updateCoverPreview() {
+  const img = $('#f-cover-preview');
+  if (entryCover) {
+    img.src = 'media-img://img/' + entryCover;
+    img.style.display = 'block';
+  } else {
+    img.style.display = 'none';
+    img.removeAttribute('src');
+  }
+}
+
+async function saveEntry() {
+  const title = $('#f-title').value.trim();
+  if (!title) { alert('Title is required.'); return; }
+
+  const media = await window.api.saveMedia({
+    id: editingMediaId || null,
+    title,
+    type: $('#f-type').value,
+    releaseYear: parseInt($('#f-year').value, 10) || null,
+    coverImage: entryCover,
+  });
+
+  if (!editingMediaId) {
+    await window.api.saveLog({
+      mediaId: media.id,
+      dateConsumed: $('#f-date').value || null,
+      status: $('#f-status').value,
+      rating: entryRating.get(),
+      review: $('#f-review').value.trim(),
+      videoUrl: $('#f-video').value.trim() || null,
+    });
+  }
+
+  $('#entry-dialog').close();
+  await refresh();
+  if ($('#detail-dialog').open) renderDetail();
+}
+
+// ---------- log dialog (add/edit one log) ----------
+
+function openLogDialog(logId) {
+  editingLogId = logId || null;
+  const log = logId ? lib.logs.find((l) => l.id === logId) : null;
+
+  $('#log-title-h').textContent = log ? 'Edit log' : 'Add log';
+  $('#l-date').value = log ? (log.dateConsumed || '') : todayStr();
+  $('#l-status').value = log ? log.status : 'completed';
+  logRating.set(log ? log.rating : null);
+  $('#l-review').value = log ? (log.review || '') : '';
+  $('#l-video').value = log ? (log.videoUrl || '') : '';
+
+  $('#log-dialog').showModal();
+}
+
+async function saveLogFromDialog() {
+  const existing = editingLogId ? lib.logs.find((l) => l.id === editingLogId) : null;
+  await window.api.saveLog({
+    ...(existing || {}),
+    id: editingLogId || null,
+    mediaId: existing ? existing.mediaId : currentMediaId,
+    dateConsumed: $('#l-date').value || null,
+    status: $('#l-status').value,
+    rating: logRating.get(),
+    review: $('#l-review').value.trim(),
+    videoUrl: $('#l-video').value.trim() || null,
+  });
+
+  $('#log-dialog').close();
+  await refresh();
+  renderDetail();
+}
+
+// ---------- wiring ----------
+
+const entryRating = makeStarInput($('#f-rating'));
+const logRating = makeStarInput($('#l-rating'));
+
+['#search', '#filter-type', '#filter-status', '#sort-by']
+  .forEach((sel) => $(sel).addEventListener('input', render));
+
+$('#btn-add').addEventListener('click', () => openEntryDialog(null));
+$('#btn-export').addEventListener('click', () => window.api.exportData());
+$('#btn-folder').addEventListener('click', () => window.api.openDataFolder());
+
+$('#grid').addEventListener('click', (e) => {
+  const card = e.target.closest('.card');
+  if (card) openDetail(card.dataset.id);
+});
+
+// One listener handles every button inside the (re-rendered) detail content.
+$('#detail-content').addEventListener('click', async (e) => {
+  const t = e.target;
+  if (t.id === 'btn-add-log') openLogDialog(null);
+  if (t.id === 'btn-edit-media') openEntryDialog(currentMediaId);
+  if (t.id === 'btn-delete-media') {
+    if (confirm('Delete this entry and all of its logs?')) {
+      await window.api.deleteMedia(currentMediaId);
+      $('#detail-dialog').close();
+      await refresh();
+    }
+  }
+  const logEl = t.closest('.log');
+  if (logEl && t.classList.contains('log-edit')) openLogDialog(logEl.dataset.logId);
+  if (logEl && t.classList.contains('log-delete')) {
+    if (confirm('Delete this log?')) {
+      await window.api.deleteLog(logEl.dataset.logId);
+      await refresh();
+      renderDetail();
+    }
+  }
+});
+
+$('#btn-detail-close').addEventListener('click', () => $('#detail-dialog').close());
+$('#entry-cancel').addEventListener('click', () => $('#entry-dialog').close());
+$('#entry-save').addEventListener('click', saveEntry);
+$('#log-cancel').addEventListener('click', () => $('#log-dialog').close());
+$('#log-save').addEventListener('click', saveLogFromDialog);
+
+$('#f-pick-image').addEventListener('click', async () => {
+  const name = await window.api.pickImage();
+  if (name) { entryCover = name; updateCoverPreview(); }
+});
+$('#f-clear-image').addEventListener('click', () => {
+  entryCover = null;
+  updateCoverPreview();
+});
+
+refresh();

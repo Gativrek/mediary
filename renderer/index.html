@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; img-src 'self' media-img: data:; frame-src https://www.youtube-nocookie.com https://www.youtube.com; style-src 'self' 'unsafe-inline'">
+  <title>Mediary</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <header>
+    <h1>Mediary</h1>
+    <input id="search" type="search" placeholder="Search titles…">
+    <select id="filter-type">
+      <option value="">All types</option>
+      <option value="game">Games</option>
+      <option value="movie">Movies</option>
+      <option value="tv">TV Shows</option>
+      <option value="anime">Anime</option>
+      <option value="book">Books</option>
+      <option value="music">Music</option>
+      <option value="other">Other</option>
+    </select>
+    <select id="filter-status">
+      <option value="">All statuses</option>
+      <option value="completed">Completed</option>
+      <option value="in-progress">In progress</option>
+      <option value="dropped">Dropped</option>
+      <option value="backlog">Backlog</option>
+      <option value="wishlist">Wishlist</option>
+    </select>
+    <select id="sort-by">
+      <option value="recent">Recently added</option>
+      <option value="title">Title A–Z</option>
+      <option value="rating">Highest rated</option>
+      <option value="year">Release year</option>
+    </select>
+    <span class="spacer"></span>
+    <button id="btn-export" class="ghost">Export</button>
+    <button id="btn-folder" class="ghost">Data folder</button>
+    <button id="btn-add" class="primary">+ Add entry</button>
+  </header>
+
+  <main>
+    <div id="grid"></div>
+    <p id="empty" class="muted" style="display:none">Nothing logged yet. Click “+ Add entry” to start.</p>
+  </main>
+
+  <!-- Add a new entry (media + first log), or edit a media item's info -->
+  <dialog id="entry-dialog">
+    <h2 id="entry-title-h">Add entry</h2>
+
+    <div class="field">
+      <span class="lbl">Title *</span>
+      <input id="f-title" type="text" autocomplete="off">
+    </div>
+    <div class="row">
+      <div class="field">
+        <span class="lbl">Type</span>
+        <select id="f-type">
+          <option value="game">Game</option>
+          <option value="movie">Movie</option>
+          <option value="tv">TV Show</option>
+          <option value="anime">Anime</option>
+          <option value="book">Book</option>
+          <option value="music">Music</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <span class="lbl">Release year</span>
+        <input id="f-year" type="number" min="1800" max="2100" placeholder="e.g. 2017">
+      </div>
+    </div>
+    <div class="field">
+      <span class="lbl">Cover image</span>
+      <div class="cover-row">
+        <img id="f-cover-preview" class="cover-preview" alt="" style="display:none">
+        <button type="button" id="f-pick-image" class="ghost">Choose image…</button>
+        <button type="button" id="f-clear-image" class="link-btn">remove</button>
+      </div>
+    </div>
+
+    <div id="entry-log-section">
+      <hr>
+      <div class="row">
+        <div class="field">
+          <span class="lbl">Date</span>
+          <input id="f-date" type="date">
+        </div>
+        <div class="field">
+          <span class="lbl">Status</span>
+          <select id="f-status">
+            <option value="completed">Completed</option>
+            <option value="in-progress">In progress</option>
+            <option value="dropped">Dropped</option>
+            <option value="backlog">Backlog</option>
+            <option value="wishlist">Wishlist</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <span class="lbl">Rating</span>
+        <div id="f-rating"></div>
+      </div>
+      <div class="field">
+        <span class="lbl">Review</span>
+        <textarea id="f-review" rows="6" placeholder="Your thoughts…"></textarea>
+      </div>
+      <div class="field">
+        <span class="lbl">Video URL (YouTube)</span>
+        <input id="f-video" type="text" placeholder="https://www.youtube.com/watch?v=…">
+      </div>
+    </div>
+
+    <div class="dialog-actions">
+      <button id="entry-cancel" class="ghost">Cancel</button>
+      <button id="entry-save" class="primary">Save</button>
+    </div>
+  </dialog>
+
+  <!-- View one media item with all of its logs -->
+  <dialog id="detail-dialog">
+    <div id="detail-content"></div>
+    <div class="dialog-actions">
+      <button id="btn-detail-close" class="ghost">Close</button>
+    </div>
+  </dialog>
+
+  <!-- Add or edit a single log -->
+  <dialog id="log-dialog">
+    <h2 id="log-title-h">Add log</h2>
+    <div class="row">
+      <div class="field">
+        <span class="lbl">Date</span>
+        <input id="l-date" type="date">
+      </div>
+      <div class="field">
+        <span class="lbl">Status</span>
+        <select id="l-status">
+          <option value="completed">Completed</option>
+          <option value="in-progress">In progress</option>
+          <option value="dropped">Dropped</option>
+          <option value="backlog">Backlog</option>
+          <option value="wishlist">Wishlist</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <span class="lbl">Rating</span>
+      <div id="l-rating"></div>
+    </div>
+    <div class="field">
+      <span class="lbl">Review</span>
+      <textarea id="l-review" rows="6" placeholder="Your thoughts…"></textarea>
+    </div>
+    <div class="field">
+      <span class="lbl">Video URL (YouTube)</span>
+      <input id="l-video" type="text" placeholder="https://www.youtube.com/watch?v=…">
+    </div>
+    <div class="dialog-actions">
+      <button id="log-cancel" class="ghost">Cancel</button>
+      <button id="log-save" class="primary">Save</button>
+    </div>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
