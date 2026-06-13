@@ -105,7 +105,8 @@ function coverHTML(m) {
   }
   const hue = hueFor(m.title || '?');
   return `<div class="cover-placeholder" style="background:linear-gradient(160deg, hsl(${hue} 38% 30%), #16181e)">` +
-         `${esc((m.title[0] || '?').toUpperCase())}</div>`;
+         `<span class="ph-initial">${esc((m.title[0] || '?').toUpperCase())}</span>` +
+         `<span class="ph-title">${esc(m.title)}</span></div>`;
 }
 
 async function refresh() {
@@ -165,23 +166,60 @@ function render() {
   }[sort];
   items.sort(compare);
 
-  $('#grid').innerHTML = items.map(({ m, log }) => `
+  // Steam-style: recency shelves when sorted by "Recently added",
+  // one flat shelf otherwise.
+  if (sort === 'recent') {
+    const groups = [];
+    for (const it of items) {
+      const label = shelfLabel(it.log);
+      const last = groups[groups.length - 1];
+      if (last && last.label === label) last.items.push(it);
+      else groups.push({ label, items: [it] });
+    }
+    $('#grid').innerHTML = groups.map((g) => `
+      <div class="shelf">
+        <h2 class="shelf-label">${g.label}</h2>
+        <div class="shelf-grid">${g.items.map(({ m, log }) => cardHTML(m, log)).join('')}</div>
+      </div>`).join('');
+  } else {
+    $('#grid').innerHTML = `
+      <div class="shelf">
+        <div class="shelf-grid">${items.map(({ m, log }) => cardHTML(m, log)).join('')}</div>
+      </div>`;
+  }
+
+  $('#empty').style.display = items.length ? 'none' : 'block';
+}
+
+// Pure-art card; the details live in an overlay revealed on hover.
+function cardHTML(m, log) {
+  return `
     <article class="card" data-id="${m.id}">
       ${coverHTML(m)}
-      <div class="card-body">
+      <div class="card-overlay">
         <h3>${esc(m.title)}</h3>
-        <div class="card-meta">
-          <span class="badge badge-type">${TYPES[m.type] || esc(m.type)}</span>
-          ${m.releaseYear ? `<span class="muted small">${m.releaseYear}</span>` : ''}
-        </div>
         <div class="card-meta">
           ${starsHTML(log ? log.rating : null)}
           ${log ? `<span class="badge badge-${log.status}">${STATUSES[log.status] || ''}</span>` : ''}
         </div>
+        <div class="card-meta">
+          <span class="badge badge-type">${TYPES[m.type] || esc(m.type)}</span>
+          ${m.releaseYear ? `<span class="muted small">${m.releaseYear}</span>` : ''}
+        </div>
       </div>
-    </article>`).join('');
+    </article>`;
+}
 
-  $('#empty').style.display = items.length ? 'none' : 'block';
+// Bucket by when the latest log was created (matches "Recently added" order).
+function shelfLabel(log) {
+  const d = log && (log.createdAt || '').slice(0, 10);
+  if (!d) return 'Undated';
+  const days = Math.floor((new Date(todayStr()) - new Date(d)) / 86400000);
+  if (days <= 0) return 'Today';
+  if (days < 7) return 'This week';
+  if (days < 31) return 'This month';
+  if (days < 365) return 'This year';
+  return 'Older';
 }
 
 // ---------- detail dialog ----------
