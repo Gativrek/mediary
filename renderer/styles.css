@@ -121,6 +121,12 @@ input:focus, select:focus, textarea:focus {
 }
 textarea { resize: vertical; }
 
+/* the open dropdown list uses the OS popup; force readable dark colors */
+option {
+  background: #1c1e26;
+  color: var(--text);
+}
+
 /* ---------- header ---------- */
 
 header {
