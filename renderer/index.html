@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; img-src 'self' media-img: data: https:; frame-src https://www.youtube-nocookie.com https://www.youtube.com; style-src 'self' 'unsafe-inline'">
+        content="default-src 'self'; img-src 'self' media-img: data: https:; font-src 'self'; frame-src https://www.youtube-nocookie.com https://www.youtube.com; style-src 'self' 'unsafe-inline'">
   <title>Mediary</title>
   <link rel="stylesheet" href="fonts.css">
   <link rel="stylesheet" href="styles.css">
@@ -25,7 +25,7 @@
 
     <div class="filters">
       <select id="filter-type">
-        <option value="">All types</option>
+        <option value="">Type</option>
         <option value="game">Games</option>
         <option value="movie">Movies</option>
         <option value="tv">TV Shows</option>
@@ -35,7 +35,7 @@
         <option value="other">Other</option>
       </select>
       <select id="filter-status">
-        <option value="">All statuses</option>
+        <option value="">Status</option>
         <option value="completed">Completed</option>
         <option value="in-progress">In progress</option>
         <option value="dropped">Dropped</option>
@@ -43,13 +43,13 @@
         <option value="wishlist">Wishlist</option>
       </select>
       <select id="filter-tag">
-        <option value="">All tags</option>
+        <option value="">Tags</option>
       </select>
       <select id="sort-by">
-        <option value="recent">Recently added</option>
-        <option value="title">Title A–Z</option>
-        <option value="rating">Highest rated</option>
-        <option value="year">Release year</option>
+        <option value="recent">Recent</option>
+        <option value="title">Title</option>
+        <option value="rating">Rating</option>
+        <option value="year">Year</option>
       </select>
     </div>
 

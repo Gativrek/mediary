@@ -156,7 +156,7 @@ function populateTagFilter() {
   const current = sel.value;
   const tags = [...new Set(lib.media.flatMap((m) => m.tags || []))]
     .sort((a, b) => a.localeCompare(b));
-  sel.innerHTML = '<option value="">All tags</option>' +
+  sel.innerHTML = '<option value="">Tags</option>' +
     tags.map((t) => `<option value="${esc(t)}">${esc(t)}</option>`).join('');
   sel.value = tags.includes(current) ? current : '';
 }
