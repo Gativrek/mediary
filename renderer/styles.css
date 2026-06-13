@@ -574,14 +574,23 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 
 #toasts {
   position: fixed;
+  /* override the popover UA defaults (inset:0; margin:auto; border; padding) */
+  inset: auto;
   left: 20px;
   bottom: 20px;
-  z-index: 50;
-  display: flex;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: visible;
+  width: auto;
+  max-width: none;
   flex-direction: column;
   gap: 10px;
   pointer-events: none;
 }
+/* [popover] is display:none until open; show as flex when open */
+#toasts:popover-open { display: flex; }
 .toast {
   max-width: 360px;
   padding: 11px 16px;

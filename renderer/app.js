@@ -25,16 +25,26 @@ let dragMediaId = null;     // media id being dragged to reorder within a list
 const $ = (sel) => document.querySelector(sel);
 
 // Transient bottom-left notification. type: 'info' | 'success' | 'error'.
+// The container is a popover so it renders in the top layer — visible even
+// above an open modal dialog (otherwise the dialog's backdrop blurs it out).
 function toast(message, type = 'info') {
+  const box = $('#toasts');
   const el = document.createElement('div');
   el.className = 'toast toast-' + type;
   el.textContent = message;
-  $('#toasts').appendChild(el);
+  box.appendChild(el);
+  // Promote to the top layer if not already shown (above any open dialog).
+  try { if (!box.matches(':popover-open')) box.showPopover(); } catch { /* unsupported */ }
   // force reflow so the entrance transition runs, then show
   requestAnimationFrame(() => el.classList.add('show'));
   setTimeout(() => {
     el.classList.remove('show');
-    el.addEventListener('transitionend', () => el.remove(), { once: true });
+    el.addEventListener('transitionend', () => {
+      el.remove();
+      if (!box.children.length && box.matches(':popover-open')) {
+        try { box.hidePopover(); } catch { /* noop */ }
+      }
+    }, { once: true });
   }, 3200);
 }
 
