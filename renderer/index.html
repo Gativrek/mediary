@@ -56,6 +56,11 @@
     <span class="spacer"></span>
 
     <div class="util">
+      <button id="btn-stats" class="icon-btn" title="Statistics" aria-label="Statistics">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line>
+        </svg>
+      </button>
       <button id="btn-settings" class="icon-btn" title="Settings" aria-label="Settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="3"></circle>
@@ -216,6 +221,19 @@
       <button id="log-cancel" class="ghost">Cancel</button>
       <button id="log-save" class="primary">Save</button>
     </div>
+  </dialog>
+
+  <!-- statistics dashboard -->
+  <dialog id="stats-dialog">
+    <div class="stats-head">
+      <h2>Your library in numbers</h2>
+      <button id="stats-close" class="icon-btn" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div id="stats-content"></div>
   </dialog>
 
   <!-- API keys for autofill -->

@@ -457,6 +457,177 @@ async function saveLogFromDialog() {
   renderDetail();
 }
 
+// ---------- statistics ----------
+
+// Build a YYYY-MM key, and a short "Mon 'YY" label, from a date string.
+function monthKey(iso) { return (iso || '').slice(0, 7); }
+function monthLabel(key) {
+  const [y, m] = key.split('-');
+  return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][+m - 1] +
+    " '" + y.slice(2);
+}
+
+function computeStats() {
+  const media = lib.media;
+  const logs = lib.logs;
+  const rated = logs.filter((l) => l.rating != null);
+  const avg = rated.length ? rated.reduce((s, l) => s + l.rating, 0) / rated.length : null;
+
+  // counts by media type and by latest-log status
+  const byType = {};
+  const byStatus = {};
+  const ratingByType = {};   // type -> { sum, n }
+  for (const m of media) {
+    byType[m.type] = (byType[m.type] || 0) + 1;
+    const log = latestLog(m.id);
+    if (log) {
+      byStatus[log.status] = (byStatus[log.status] || 0) + 1;
+      if (log.rating != null) {
+        const r = ratingByType[m.type] || (ratingByType[m.type] = { sum: 0, n: 0 });
+        r.sum += log.rating; r.n += 1;
+      }
+    }
+  }
+
+  // activity: logs per month over the trailing 12 months
+  const now = new Date(todayStr());
+  const months = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  }
+  const monthCounts = Object.fromEntries(months.map((k) => [k, 0]));
+  for (const l of logs) {
+    const k = monthKey(l.dateConsumed || (l.createdAt || '').slice(0, 10));
+    if (k in monthCounts) monthCounts[k] += 1;
+  }
+
+  // rating histogram in half-star buckets (1..10 -> 0.5..5)
+  const hist = Array(10).fill(0);
+  for (const l of rated) hist[l.rating - 1] += 1;
+
+  // top tags
+  const tagCounts = {};
+  for (const m of media) for (const t of (m.tags || [])) tagCounts[t] = (tagCounts[t] || 0) + 1;
+  const topTags = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]).slice(0, 12);
+
+  const thisYear = String(now.getFullYear());
+  const thisYearCount = logs.filter((l) =>
+    (l.dateConsumed || l.createdAt || '').startsWith(thisYear)).length;
+
+  return { media, logs, rated, avg, byType, byStatus, ratingByType,
+    months, monthCounts, hist, topTags, thisYear, thisYearCount };
+}
+
+// horizontal bar row: label, value, proportional fill
+function barRow(label, value, max, extra = '') {
+  const pct = max ? Math.round((value / max) * 100) : 0;
+  return `<div class="stat-bar">
+    <span class="stat-bar-label">${esc(label)}</span>
+    <span class="stat-bar-track"><span class="stat-bar-fill" style="width:${pct}%"></span></span>
+    <span class="stat-bar-val">${esc(extra || value)}</span>
+  </div>`;
+}
+
+function renderStats() {
+  const s = computeStats();
+
+  if (s.media.length === 0) {
+    $('#stats-content').innerHTML = '<p class="muted">Log a few things first — your stats will appear here.</p>';
+    return;
+  }
+
+  // headline cards
+  const cards = [
+    ['Titles', s.media.length],
+    ['Logs', s.logs.length],
+    ['Avg rating', s.avg == null ? '—' : (s.avg / 2).toFixed(1) + '★'],
+    [`Logged in ${s.thisYear}`, s.thisYearCount],
+  ].map(([k, v]) => `<div class="stat-card"><div class="stat-num">${esc(v)}</div><div class="stat-key">${esc(k)}</div></div>`).join('');
+
+  // by type / by status
+  const typeMax = Math.max(...Object.values(s.byType), 1);
+  const typeRows = Object.entries(s.byType).sort((a, b) => b[1] - a[1])
+    .map(([t, n]) => barRow(TYPES[t] || t, n, typeMax)).join('');
+
+  const statusOrder = ['completed', 'in-progress', 'dropped', 'backlog', 'wishlist'];
+  const statusMax = Math.max(...Object.values(s.byStatus), 1);
+  const statusRows = statusOrder.filter((k) => s.byStatus[k])
+    .map((k) => barRow(STATUSES[k], s.byStatus[k], statusMax)).join('');
+
+  // activity chart (vertical bars)
+  const actMax = Math.max(...Object.values(s.monthCounts), 1);
+  const actBars = s.months.map((k) => {
+    const n = s.monthCounts[k];
+    const h = Math.round((n / actMax) * 100);
+    return `<div class="act-col" title="${esc(monthLabel(k))}: ${n}">
+      <span class="act-bar" style="height:${h}%"></span>
+      <span class="act-x">${monthLabel(k).split(" '")[0]}</span>
+    </div>`;
+  }).join('');
+
+  // average rating by type
+  const ratingRows = Object.entries(s.ratingByType)
+    .map(([t, r]) => [t, r.sum / r.n]).sort((a, b) => b[1] - a[1])
+    .map(([t, a]) => barRow(TYPES[t] || t, a, 10, (a / 2).toFixed(1) + '★')).join('')
+    || '<p class="muted small">No ratings yet.</p>';
+
+  // rating histogram
+  const histMax = Math.max(...s.hist, 1);
+  const histBars = s.hist.map((n, i) => {
+    const h = Math.round((n / histMax) * 100);
+    const stars = (i + 1) / 2;
+    return `<div class="act-col" title="${stars}★: ${n}">
+      <span class="act-bar act-bar-gold" style="height:${h}%"></span>
+      <span class="act-x">${stars}</span>
+    </div>`;
+  }).join('');
+
+  const tagChips = s.topTags.length
+    ? s.topTags.map(([t, n]) => `<span class="tag-chip">${esc(t)} <span class="muted">${n}</span></span>`).join('')
+    : '<p class="muted small">No tags yet.</p>';
+
+  $('#stats-content').innerHTML = `
+    <div class="stat-cards">${cards}</div>
+
+    <div class="stat-grid">
+      <section class="stat-panel">
+        <h3>By type</h3>
+        ${typeRows}
+      </section>
+      <section class="stat-panel">
+        <h3>By status</h3>
+        ${statusRows}
+      </section>
+    </div>
+
+    <section class="stat-panel">
+      <h3>Activity — last 12 months</h3>
+      <div class="act-chart">${actBars}</div>
+    </section>
+
+    <div class="stat-grid">
+      <section class="stat-panel">
+        <h3>Average rating by type</h3>
+        ${ratingRows}
+      </section>
+      <section class="stat-panel">
+        <h3>Rating distribution</h3>
+        <div class="act-chart">${histBars}</div>
+      </section>
+    </div>
+
+    <section class="stat-panel">
+      <h3>Top tags</h3>
+      <div class="tag-cloud">${tagChips}</div>
+    </section>`;
+}
+
+function openStats() {
+  renderStats();
+  $('#stats-dialog').showModal();
+}
+
 // ---------- wiring ----------
 
 const entryRating = makeStarInput($('#f-rating'));
@@ -487,6 +658,8 @@ $('#f-tags').addEventListener('click', (e) => {
 $('#btn-add').addEventListener('click', () => openEntryDialog(null));
 $('#btn-export').addEventListener('click', () => window.api.exportData());
 $('#btn-folder').addEventListener('click', () => window.api.openDataFolder());
+$('#btn-stats').addEventListener('click', openStats);
+$('#stats-close').addEventListener('click', () => $('#stats-dialog').close());
 
 $('#grid').addEventListener('click', (e) => {
   const card = e.target.closest('.card');
