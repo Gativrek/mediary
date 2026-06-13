@@ -577,6 +577,12 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 #list-banner h2 { margin: 8px 0 2px; font-size: 24px; }
 .list-banner-text .list-hint { margin: 6px 0 0; opacity: 0.7; }
 
+/* list create form */
+.list-create { display: flex; flex-wrap: wrap; gap: 8px; }
+.list-create #list-new-name { flex: 2; min-width: 160px; }
+.list-create #list-new-desc { flex: 3; min-width: 160px; }
+.list-create button { white-space: nowrap; }
+
 /* list manager rows */
 #lists-list { margin-top: 14px; }
 .list-row {
@@ -587,7 +593,12 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
   border-bottom: 1px solid var(--border);
 }
 .list-row:last-child { border-bottom: none; }
-.list-row-main { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.list-row-main { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.list-row-desc { line-height: 1.4; }
+
+/* inline list editor */
+.list-edit-form { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.list-edit-actions { display: flex; align-items: center; gap: 10px; }
 
 /* add-to-list chips in the detail view */
 .lists-section { margin: 16px 0 4px; }

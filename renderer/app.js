@@ -723,11 +723,12 @@ function renderListsManager() {
   box.innerHTML = lib.lists.map((l) => `
     <div class="list-row" data-list-id="${l.id}">
       <div class="list-row-main">
-        <strong>${esc(l.name)}</strong>
-        <span class="muted small">${l.items.length} item${l.items.length === 1 ? '' : 's'}</span>
+        <span><strong>${esc(l.name)}</strong>
+          <span class="muted small">${l.items.length} item${l.items.length === 1 ? '' : 's'}</span></span>
+        ${l.description ? `<span class="muted small list-row-desc">${esc(l.description)}</span>` : ''}
       </div>
       <button class="link-btn list-view-btn">view</button>
-      <button class="link-btn list-rename-btn">rename</button>
+      <button class="link-btn list-edit-btn">edit</button>
       <button class="link-btn list-delete-btn">delete</button>
     </div>`).join('');
 }
@@ -735,9 +736,36 @@ function renderListsManager() {
 async function createListFromInput() {
   const name = $('#list-new-name').value.trim();
   if (!name) return;
-  await window.api.saveList({ name });
+  await window.api.saveList({ name, description: $('#list-new-desc').value.trim() });
   $('#list-new-name').value = '';
+  $('#list-new-desc').value = '';
   await refresh();
+  renderListsManager();
+}
+
+// Swap a manager row into an inline name + description editor.
+function startListEdit(row, list) {
+  row.innerHTML = `
+    <div class="list-edit-form">
+      <input class="le-name" type="text" value="${esc(list.name)}" placeholder="List name">
+      <input class="le-desc" type="text" value="${esc(list.description || '')}" placeholder="Description (optional)">
+      <div class="list-edit-actions">
+        <button class="le-cancel link-btn">cancel</button>
+        <button class="le-save primary">Save</button>
+      </div>
+    </div>`;
+  const nameInput = row.querySelector('.le-name');
+  nameInput.focus();
+  nameInput.select();
+}
+
+async function commitListEdit(row, list) {
+  const name = row.querySelector('.le-name').value.trim();
+  const description = row.querySelector('.le-desc').value.trim();
+  if (name) {
+    await window.api.saveList({ ...list, name, description });
+    await refresh();
+  }
   renderListsManager();
 }
 
@@ -816,9 +844,9 @@ $('#stats-close').addEventListener('click', () => $('#stats-dialog').close());
 $('#btn-lists').addEventListener('click', openLists);
 $('#lists-close').addEventListener('click', () => $('#lists-dialog').close());
 $('#list-new-add').addEventListener('click', createListFromInput);
-$('#list-new-name').addEventListener('keydown', (e) => {
+['#list-new-name', '#list-new-desc'].forEach((sel) => $(sel).addEventListener('keydown', (e) => {
   if (e.key === 'Enter') { e.preventDefault(); createListFromInput(); }
-});
+}));
 $('#list-exit').addEventListener('click', exitList);
 
 $('#lists-list').addEventListener('click', async (e) => {
@@ -827,30 +855,10 @@ $('#lists-list').addEventListener('click', async (e) => {
   const list = lib.lists.find((l) => l.id === row.dataset.listId);
   if (!list) return;
   if (e.target.classList.contains('list-view-btn')) enterList(list.id);
-  else if (e.target.classList.contains('list-rename-btn')) {
-    // Inline rename — Electron has no window.prompt().
-    const main = row.querySelector('.list-row-main');
-    main.innerHTML = `<input class="list-rename-input" type="text" value="${esc(list.name)}">`;
-    const input = main.querySelector('input');
-    input.focus();
-    input.select();
-    let done = false;
-    const commit = async () => {
-      if (done) return;
-      done = true;
-      const name = input.value.trim();
-      if (name && name !== list.name) {
-        await window.api.saveList({ ...list, name });
-        await refresh();
-      }
-      renderListsManager();
-    };
-    input.addEventListener('keydown', (ev) => {
-      if (ev.key === 'Enter') { ev.preventDefault(); commit(); }
-      else if (ev.key === 'Escape') { done = true; renderListsManager(); }
-    });
-    input.addEventListener('blur', commit);
-  } else if (e.target.classList.contains('list-delete-btn')) {
+  else if (e.target.classList.contains('list-edit-btn')) startListEdit(row, list);
+  else if (e.target.classList.contains('le-save')) commitListEdit(row, list);
+  else if (e.target.classList.contains('le-cancel')) renderListsManager();
+  else if (e.target.classList.contains('list-delete-btn')) {
     if (confirm(`Delete the list “${list.name}”? (Your entries are not deleted.)`)) {
       if (currentListId === list.id) currentListId = null;
       await window.api.deleteList(list.id);
@@ -858,6 +866,15 @@ $('#lists-list').addEventListener('click', async (e) => {
       renderListsManager();
     }
   }
+});
+
+// Enter saves / Escape cancels while editing a list row.
+$('#lists-list').addEventListener('keydown', (e) => {
+  if (!e.target.classList.contains('le-name') && !e.target.classList.contains('le-desc')) return;
+  const row = e.target.closest('.list-row');
+  const list = lib.lists.find((l) => l.id === row.dataset.listId);
+  if (e.key === 'Enter') { e.preventDefault(); commitListEdit(row, list); }
+  else if (e.key === 'Escape') renderListsManager();
 });
 
 $('#grid').addEventListener('click', async (e) => {
