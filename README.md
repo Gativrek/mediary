@@ -2,6 +2,29 @@
 
 A personal media diary (a personal Backloggd) — log games, movies, TV,
 anime, books and music with ratings, reviews, cover images and video links.
+A local-first desktop app built with Electron and plain HTML/CSS/JS; your
+data stays on your machine in a single JSON file.
+
+## Features
+
+- **Log anything** — games, movies, TV, anime, books, music, with a release
+  year, cover image, and an optional embedded YouTube video
+- **Multiple logs per title** — record every replay/rewatch separately
+- **Half-star ratings, statuses** (completed / in progress / dropped / backlog
+  / wishlist) and **Markdown reviews** with `||spoiler||` support
+- **Metadata autofill** — fetch cover, year and genres from TMDB (movies/TV),
+  IGDB (games), Open Library (books) and iTunes (music)
+- **Tags, favorites, and ordered lists** (drag to reorder)
+- **Search, filter and sort**; a **stats dashboard**; **export / import**
+- **Automatic local backups** on every launch
+- A glass, Steam-style library UI
+
+## Screenshots
+
+<!-- Drop PNGs in docs/ and they'll show here. -->
+![Library](docs/library.png)
+![Entry detail](docs/detail.png)
+![Stats](docs/stats.png)
 
 ## Running
 
@@ -115,8 +138,15 @@ Keys are entered via the gear icon in the app and stored locally in
 
 ## Roadmap
 
-- **V1.x** — import, stats dashboard (entries per month, average rating by
-  type), "year in review", glass UI pass
-- **V2** — swap JSON for SQLite if the library gets big
-- **V3 (public)** — move the storage layer behind a real server (Postgres),
-  add accounts; media table becomes shared/canonical, logs get a `userId`
+- **Done** — autofill, tags, favorites, ordered lists, Markdown reviews, stats
+  dashboard, export/import, auto-backup, glass UI
+- **Maybe next** — keyboard shortcuts, progress tracking for in-progress items,
+  accent theming, swap JSON for SQLite if a library gets large
+- **Someday (public)** — move the storage layer behind a real server
+  (Postgres) with accounts; the media table becomes shared/canonical and logs
+  get a `userId`. The app is already architected for this — all data access
+  lives in `main.js`.
+
+## License
+
+[MIT](LICENSE) © Gabriel Vieira
