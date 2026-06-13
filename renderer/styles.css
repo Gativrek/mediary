@@ -269,3 +269,44 @@ hr { border: none; border-top: 1px solid #2a2d35; margin: 16px 0; }
   display: block;
 }
 .autofill-text { display: flex; flex-direction: column; gap: 2px; }
+
+/* ---------- tags ---------- */
+
+.tag-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #3a3d46;
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: #14151a;
+  cursor: text;
+}
+.tag-box input {
+  border: none;
+  background: none;
+  padding: 4px;
+  width: auto;
+  flex: 1;
+  min-width: 120px;
+}
+.tag-box input:focus { outline: none; }
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #2a2d35;
+  border-radius: 999px;
+  padding: 3px 6px 3px 10px;
+  font-size: 13px;
+}
+.tag-x {
+  background: none;
+  border: none;
+  padding: 0 4px;
+  color: #9aa0b0;
+  font-size: 14px;
+  line-height: 1;
+}
+.tag-x:hover { color: #fff; filter: none; }

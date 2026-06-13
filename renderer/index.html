@@ -30,6 +30,9 @@
       <option value="backlog">Backlog</option>
       <option value="wishlist">Wishlist</option>
     </select>
+    <select id="filter-tag">
+      <option value="">All tags</option>
+    </select>
     <select id="sort-by">
       <option value="recent">Recently added</option>
       <option value="title">Title A–Z</option>
@@ -76,6 +79,12 @@
       <div class="field">
         <span class="lbl">Release year</span>
         <input id="f-year" type="number" min="1800" max="2100" placeholder="e.g. 2017">
+      </div>
+    </div>
+    <div class="field">
+      <span class="lbl">Tags</span>
+      <div id="f-tags" class="tag-box">
+        <input id="f-tag-input" type="text" placeholder="Add tag + Enter" autocomplete="off">
       </div>
     </div>
     <div class="field">

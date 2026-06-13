@@ -60,7 +60,8 @@ Design decisions made with the future public version in mind:
   "version": 1,
   "media": [
     { "id": "uuid", "title": "Outer Wilds", "type": "game",
-      "releaseYear": 2019, "coverImage": "uuid.jpg" }
+      "releaseYear": 2019, "coverImage": "uuid.jpg",
+      "tags": ["Adventure", "Indie"] }
   ],
   "logs": [
     { "id": "uuid", "mediaId": "uuid", "dateConsumed": "2026-06-10",
@@ -90,8 +91,8 @@ Keys are entered via the gear icon in the app and stored locally in
 
 ## Roadmap
 
-- **V1.x** — tags/genres, import, stats dashboard (entries per month, average
-  rating by type), "year in review", glass UI pass
+- **V1.x** — import, stats dashboard (entries per month, average rating by
+  type), "year in review", glass UI pass
 - **V2** — swap JSON for SQLite if the library gets big
 - **V3 (public)** — move the storage layer behind a real server (Postgres),
   add accounts; media table becomes shared/canonical, logs get a `userId`

@@ -17,6 +17,7 @@ let editingMediaId = null;  // media being edited in the entry dialog (null = cr
 let editingLogId = null;    // log being edited in the log dialog (null = adding new)
 let entryCover = null;      // image filename chosen in the entry dialog
 let autofillResults = [];   // last search results shown in the entry dialog
+let entryTags = [];         // tags being edited in the entry dialog
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -92,7 +93,20 @@ function todayStr() {
 
 async function refresh() {
   lib = await window.api.getLibrary();
+  populateTagFilter();
   render();
+}
+
+// Rebuild the header tag dropdown from every tag in the library, keeping the
+// current selection if it still exists.
+function populateTagFilter() {
+  const sel = $('#filter-tag');
+  const current = sel.value;
+  const tags = [...new Set(lib.media.flatMap((m) => m.tags || []))]
+    .sort((a, b) => a.localeCompare(b));
+  sel.innerHTML = '<option value="">All tags</option>' +
+    tags.map((t) => `<option value="${esc(t)}">${esc(t)}</option>`).join('');
+  sel.value = tags.includes(current) ? current : '';
 }
 
 // ---------- main grid ----------
@@ -101,12 +115,16 @@ function render() {
   const q = $('#search').value.trim().toLowerCase();
   const type = $('#filter-type').value;
   const status = $('#filter-status').value;
+  const tag = $('#filter-tag').value;
   const sort = $('#sort-by').value;
 
   let items = lib.media.map((m) => ({ m, log: latestLog(m.id) }));
-  if (q) items = items.filter((x) => x.m.title.toLowerCase().includes(q));
+  if (q) items = items.filter((x) =>
+    x.m.title.toLowerCase().includes(q) ||
+    (x.m.tags || []).some((t) => t.toLowerCase().includes(q)));
   if (type) items = items.filter((x) => x.m.type === type);
   if (status) items = items.filter((x) => x.log && x.log.status === status);
+  if (tag) items = items.filter((x) => (x.m.tags || []).includes(tag));
 
   const compare = {
     recent: (a, b) => ((b.log && b.log.createdAt) || '').localeCompare((a.log && a.log.createdAt) || ''),
@@ -155,6 +173,9 @@ function renderDetail() {
           <span class="badge badge-type">${TYPES[m.type] || esc(m.type)}</span>
           ${m.releaseYear ? `<span class="muted">${m.releaseYear}</span>` : ''}
         </div>
+        ${(m.tags && m.tags.length)
+          ? `<div class="card-meta">${m.tags.map((t) => `<span class="badge">${esc(t)}</span>`).join('')}</div>`
+          : ''}
         <div class="row">
           <button id="btn-add-log">+ Add log</button>
           <button id="btn-edit-media" class="ghost">Edit</button>
@@ -207,6 +228,9 @@ function openEntryDialog(mediaId) {
   $('#f-year').value = m && m.releaseYear ? m.releaseYear : '';
   entryCover = m ? m.coverImage || null : null;
   updateCoverPreview();
+  entryTags = m ? [...(m.tags || [])] : [];
+  renderEntryTags();
+  $('#f-tag-input').value = '';
 
   $('#autofill-results').style.display = 'none';
   autofillResults = [];
@@ -245,6 +269,7 @@ async function saveEntry() {
     type: $('#f-type').value,
     releaseYear: parseInt($('#f-year').value, 10) || null,
     coverImage: entryCover,
+    tags: entryTags,
   });
 
   if (!editingMediaId) {
@@ -297,11 +322,40 @@ async function runAutofill() {
 async function applyAutofill(result) {
   $('#f-title').value = result.title;
   if (result.year) $('#f-year').value = result.year;
+  (result.tags || []).forEach(addEntryTag);
   $('#autofill-results').style.display = 'none';
   if (result.imageUrl) {
     const name = await window.api.imageFromUrl(result.imageUrl);
     if (name) { entryCover = name; updateCoverPreview(); }
   }
+}
+
+// ---------- tag chips ----------
+
+function renderEntryTags() {
+  const box = $('#f-tags');
+  box.querySelectorAll('.tag-chip').forEach((el) => el.remove());
+  const input = $('#f-tag-input');
+  entryTags.forEach((t) => {
+    const chip = document.createElement('span');
+    chip.className = 'tag-chip';
+    chip.textContent = t;
+    const x = document.createElement('button');
+    x.type = 'button';
+    x.className = 'tag-x';
+    x.textContent = '×';
+    x.dataset.tag = t;
+    chip.appendChild(x);
+    box.insertBefore(chip, input);
+  });
+}
+
+function addEntryTag(raw) {
+  const t = (raw || '').trim();
+  if (!t) return;
+  if (entryTags.some((x) => x.toLowerCase() === t.toLowerCase())) return;
+  entryTags.push(t);
+  renderEntryTags();
 }
 
 // ---------- log dialog (add/edit one log) ----------
@@ -343,8 +397,27 @@ async function saveLogFromDialog() {
 const entryRating = makeStarInput($('#f-rating'));
 const logRating = makeStarInput($('#l-rating'));
 
-['#search', '#filter-type', '#filter-status', '#sort-by']
+['#search', '#filter-type', '#filter-status', '#filter-tag', '#sort-by']
   .forEach((sel) => $(sel).addEventListener('input', render));
+
+$('#f-tag-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    addEntryTag(e.target.value);
+    e.target.value = '';
+  } else if (e.key === 'Backspace' && !e.target.value) {
+    entryTags.pop();
+    renderEntryTags();
+  }
+});
+$('#f-tags').addEventListener('click', (e) => {
+  if (e.target.classList.contains('tag-x')) {
+    entryTags = entryTags.filter((t) => t !== e.target.dataset.tag);
+    renderEntryTags();
+  } else {
+    $('#f-tag-input').focus();
+  }
+});
 
 $('#btn-add').addEventListener('click', () => openEntryDialog(null));
 $('#btn-export').addEventListener('click', () => window.api.exportData());

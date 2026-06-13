@@ -226,8 +226,24 @@ async function tmdbFetch(pathAndQuery) {
   return res.json();
 }
 
+// TMDB returns genres as numeric ids; resolve them via the genre list
+// endpoints, fetched once per session.
+let tmdbGenreMap = null;
+async function tmdbGenres() {
+  if (tmdbGenreMap) return tmdbGenreMap;
+  const [movies, tv] = await Promise.all([
+    tmdbFetch('/genre/movie/list?language=en'),
+    tmdbFetch('/genre/tv/list?language=en'),
+  ]);
+  tmdbGenreMap = {};
+  [...movies.genres, ...tv.genres].forEach((g) => { tmdbGenreMap[g.id] = g.name; });
+  return tmdbGenreMap;
+}
+
 async function searchTMDB(query) {
   const data = await tmdbFetch(`/search/multi?include_adult=false&query=${encodeURIComponent(query)}`);
+  let genres = {};
+  try { genres = await tmdbGenres(); } catch { /* search still works without genre names */ }
   return data.results
     .filter((r) => r.media_type === 'movie' || r.media_type === 'tv')
     .slice(0, 8)
@@ -236,6 +252,7 @@ async function searchTMDB(query) {
       year: parseInt((r.release_date || r.first_air_date || '').slice(0, 4), 10) || null,
       imageUrl: r.poster_path ? 'https://image.tmdb.org/t/p/w342' + r.poster_path : null,
       subtitle: r.media_type === 'tv' ? 'TV' : 'Movie',
+      tags: (r.genre_ids || []).map((id) => genres[id]).filter(Boolean).slice(0, 4),
       source: 'TMDB',
     }));
 }
@@ -268,7 +285,7 @@ async function searchIGDB(query) {
       Authorization: 'Bearer ' + token,
       'Content-Type': 'text/plain',
     },
-    body: `search "${query.replace(/["\\]/g, '')}"; fields name, first_release_date, cover.image_id; limit 8;`,
+    body: `search "${query.replace(/["\\]/g, '')}"; fields name, first_release_date, cover.image_id, genres.name; limit 8;`,
   });
   if (!res.ok) throw new Error('IGDB error ' + res.status);
   const data = await res.json();
@@ -277,6 +294,7 @@ async function searchIGDB(query) {
     year: g.first_release_date ? new Date(g.first_release_date * 1000).getUTCFullYear() : null,
     imageUrl: g.cover ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${g.cover.image_id}.jpg` : null,
     subtitle: null,
+    tags: (g.genres || []).map((x) => x.name).slice(0, 4),
     source: 'IGDB',
   }));
 }
@@ -291,6 +309,7 @@ async function searchOpenLibrary(query) {
     year: d.first_publish_year || null,
     imageUrl: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-L.jpg` : null,
     subtitle: d.author_name ? d.author_name[0] : null,
+    tags: [],
     source: 'Open Library',
   }));
 }
@@ -305,6 +324,7 @@ async function searchITunes(query) {
     year: r.releaseDate ? new Date(r.releaseDate).getUTCFullYear() : null,
     imageUrl: r.artworkUrl100 ? r.artworkUrl100.replace('100x100', '600x600') : null,
     subtitle: r.artistName || null,
+    tags: r.primaryGenreName ? [r.primaryGenreName] : [],
     source: 'iTunes',
   }));
 }
