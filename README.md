@@ -1,5 +1,10 @@
 # Mediary
 
+![License: MIT](https://img.shields.io/badge/License-MIT-7b5cb8.svg)
+![Platform: Windows](https://img.shields.io/badge/platform-Windows-0078D6.svg)
+![Built with Electron](https://img.shields.io/badge/built%20with-Electron-47848F.svg)
+![Latest release](https://img.shields.io/github/v/release/Gativrek/mediary?color=7b5cb8)
+
 A personal media diary (a personal Backloggd) — log games, movies, TV,
 anime, books and music with ratings, reviews, cover images and video links.
 A local-first desktop app built with Electron and plain HTML/CSS/JS; your
