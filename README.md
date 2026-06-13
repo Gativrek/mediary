@@ -72,11 +72,26 @@ Design decisions made with the future public version in mind:
 
 `status` is one of: `completed`, `in-progress`, `dropped`, `backlog`, `wishlist`.
 
+## Metadata autofill
+
+Type a title in the Add entry dialog and click **Autofill** (or press Enter):
+the app searches the right database for the entry's type and fills in the
+title, year and cover art with one click.
+
+| Type | Source | Needs a key? |
+| --- | --- | --- |
+| Books | Open Library | No |
+| Music | iTunes Search | No |
+| Movies / TV / Anime | TMDB | Free key: themoviedb.org → account Settings → API |
+| Games | IGDB | Free app at dev.twitch.tv/console/apps (Client ID + Secret) |
+
+Keys are entered via the gear icon in the app and stored locally in
+`%APPDATA%\Mediary\settings.json`.
+
 ## Roadmap
 
 - **V1.x** — tags/genres, import, stats dashboard (entries per month, average
-  rating by type), "year in review"
-- **V2** — metadata autofill from free APIs: IGDB (games), TMDB (movies/TV),
-  Open Library (books); swap JSON for SQLite if the library gets big
+  rating by type), "year in review", glass UI pass
+- **V2** — swap JSON for SQLite if the library gets big
 - **V3 (public)** — move the storage layer behind a real server (Postgres),
   add accounts; media table becomes shared/canonical, logs get a `userId`

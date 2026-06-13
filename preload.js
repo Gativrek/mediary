@@ -12,4 +12,8 @@ contextBridge.exposeInMainWorld('api', {
   pickImage: () => ipcRenderer.invoke('image:pick'),
   exportData: () => ipcRenderer.invoke('data:export'),
   openDataFolder: () => ipcRenderer.invoke('data:openFolder'),
+  metaSearch: (query, type) => ipcRenderer.invoke('meta:search', { query, type }),
+  imageFromUrl: (url) => ipcRenderer.invoke('image:fromUrl', url),
+  getSettings: () => ipcRenderer.invoke('settings:get'),
+  saveSettings: (s) => ipcRenderer.invoke('settings:save', s),
 });

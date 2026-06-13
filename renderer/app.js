@@ -16,6 +16,7 @@ let currentMediaId = null;  // media shown in the detail dialog
 let editingMediaId = null;  // media being edited in the entry dialog (null = creating new)
 let editingLogId = null;    // log being edited in the log dialog (null = adding new)
 let entryCover = null;      // image filename chosen in the entry dialog
+let autofillResults = [];   // last search results shown in the entry dialog
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -207,6 +208,9 @@ function openEntryDialog(mediaId) {
   entryCover = m ? m.coverImage || null : null;
   updateCoverPreview();
 
+  $('#autofill-results').style.display = 'none';
+  autofillResults = [];
+
   // When editing, only media info is shown — logs are edited individually.
   $('#entry-log-section').style.display = m ? 'none' : 'block';
   if (!m) {
@@ -257,6 +261,47 @@ async function saveEntry() {
   $('#entry-dialog').close();
   await refresh();
   if ($('#detail-dialog').open) renderDetail();
+}
+
+// ---------- metadata autofill ----------
+
+async function runAutofill() {
+  const query = $('#f-title').value.trim();
+  const box = $('#autofill-results');
+  if (!query) return;
+
+  box.style.display = 'block';
+  box.innerHTML = '<p class="muted small">Searching…</p>';
+
+  const resp = await window.api.metaSearch(query, $('#f-type').value);
+  if (!resp.ok) {
+    box.innerHTML = `<p class="muted small">${esc(resp.error)}</p>`;
+    return;
+  }
+  if (resp.results.length === 0) {
+    box.innerHTML = '<p class="muted small">No results found.</p>';
+    return;
+  }
+
+  autofillResults = resp.results;
+  box.innerHTML = resp.results.map((r, i) => `
+    <button type="button" class="autofill-item" data-i="${i}">
+      ${r.imageUrl ? `<img src="${esc(r.imageUrl)}" alt="">` : '<span class="autofill-noimg"></span>'}
+      <span class="autofill-text">
+        <strong>${esc(r.title)}</strong>
+        <span class="muted small">${[r.year, r.subtitle, r.source].filter(Boolean).map(esc).join(' · ')}</span>
+      </span>
+    </button>`).join('');
+}
+
+async function applyAutofill(result) {
+  $('#f-title').value = result.title;
+  if (result.year) $('#f-year').value = result.year;
+  $('#autofill-results').style.display = 'none';
+  if (result.imageUrl) {
+    const name = await window.api.imageFromUrl(result.imageUrl);
+    if (name) { entryCover = name; updateCoverPreview(); }
+  }
 }
 
 // ---------- log dialog (add/edit one log) ----------
@@ -338,6 +383,32 @@ $('#entry-cancel').addEventListener('click', () => $('#entry-dialog').close());
 $('#entry-save').addEventListener('click', saveEntry);
 $('#log-cancel').addEventListener('click', () => $('#log-dialog').close());
 $('#log-save').addEventListener('click', saveLogFromDialog);
+
+$('#f-autofill').addEventListener('click', runAutofill);
+$('#f-title').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); runAutofill(); }
+});
+$('#autofill-results').addEventListener('click', (e) => {
+  const item = e.target.closest('.autofill-item');
+  if (item) applyAutofill(autofillResults[Number(item.dataset.i)]);
+});
+
+$('#btn-settings').addEventListener('click', async () => {
+  const s = await window.api.getSettings();
+  $('#s-tmdb').value = s.tmdbKey;
+  $('#s-igdb-id').value = s.igdbClientId;
+  $('#s-igdb-secret').value = s.igdbClientSecret;
+  $('#settings-dialog').showModal();
+});
+$('#settings-cancel').addEventListener('click', () => $('#settings-dialog').close());
+$('#settings-save').addEventListener('click', async () => {
+  await window.api.saveSettings({
+    tmdbKey: $('#s-tmdb').value.trim(),
+    igdbClientId: $('#s-igdb-id').value.trim(),
+    igdbClientSecret: $('#s-igdb-secret').value.trim(),
+  });
+  $('#settings-dialog').close();
+});
 
 $('#f-pick-image').addEventListener('click', async () => {
   const name = await window.api.pickImage();

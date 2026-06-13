@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; img-src 'self' media-img: data:; frame-src https://www.youtube-nocookie.com https://www.youtube.com; style-src 'self' 'unsafe-inline'">
+        content="default-src 'self'; img-src 'self' media-img: data: https:; frame-src https://www.youtube-nocookie.com https://www.youtube.com; style-src 'self' 'unsafe-inline'">
   <title>Mediary</title>
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -37,6 +37,7 @@
       <option value="year">Release year</option>
     </select>
     <span class="spacer"></span>
+    <button id="btn-settings" class="ghost" title="Settings">⚙</button>
     <button id="btn-export" class="ghost">Export</button>
     <button id="btn-folder" class="ghost">Data folder</button>
     <button id="btn-add" class="primary">+ Add entry</button>
@@ -53,7 +54,11 @@
 
     <div class="field">
       <span class="lbl">Title *</span>
-      <input id="f-title" type="text" autocomplete="off">
+      <div class="autofill-row">
+        <input id="f-title" type="text" autocomplete="off" placeholder="Type a title, then Autofill">
+        <button type="button" id="f-autofill" class="ghost">Autofill</button>
+      </div>
+      <div id="autofill-results" style="display:none"></div>
     </div>
     <div class="row">
       <div class="field">
@@ -162,6 +167,33 @@
     <div class="dialog-actions">
       <button id="log-cancel" class="ghost">Cancel</button>
       <button id="log-save" class="primary">Save</button>
+    </div>
+  </dialog>
+
+  <!-- API keys for autofill -->
+  <dialog id="settings-dialog">
+    <h2>Settings</h2>
+    <p class="muted small">
+      Autofill works out of the box for <strong>books</strong> (Open Library) and
+      <strong>music</strong> (iTunes). For movies/TV/anime, add a free TMDB key
+      (themoviedb.org → account Settings → API). For games, create a free app at
+      dev.twitch.tv/console/apps and paste its Client ID and Secret.
+    </p>
+    <div class="field">
+      <span class="lbl">TMDB API key (movies, TV, anime)</span>
+      <input id="s-tmdb" type="text" autocomplete="off">
+    </div>
+    <div class="field">
+      <span class="lbl">Twitch / IGDB Client ID (games)</span>
+      <input id="s-igdb-id" type="text" autocomplete="off">
+    </div>
+    <div class="field">
+      <span class="lbl">Twitch / IGDB Client Secret</span>
+      <input id="s-igdb-secret" type="password" autocomplete="off">
+    </div>
+    <div class="dialog-actions">
+      <button id="settings-cancel" class="ghost">Cancel</button>
+      <button id="settings-save" class="primary">Save</button>
     </div>
   </dialog>
 

@@ -22,6 +22,8 @@ let dataDir;   // %APPDATA%/medialog/library
 let imagesDir; // %APPDATA%/medialog/library/images
 let dbFile;    // %APPDATA%/medialog/library/library.json
 let library;   // in-memory copy of the database
+let settingsFile;
+let settings;  // { tmdbKey, igdbClientId, igdbClientSecret, igdbToken }
 
 // ---------- storage ----------
 
@@ -79,6 +81,13 @@ app.whenReady().then(() => {
   fs.mkdirSync(imagesDir, { recursive: true });
   dbFile = path.join(dataDir, 'library.json');
   library = loadLibrary();
+
+  settingsFile = path.join(app.getPath('userData'), 'settings.json');
+  try {
+    settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
+  } catch {
+    settings = {};
+  }
 
   // Serve stored cover images at media-img://img/<filename>
   protocol.handle('media-img', (request) => {
@@ -176,3 +185,152 @@ ipcMain.handle('data:export', async () => {
 });
 
 ipcMain.handle('data:openFolder', () => shell.openPath(dataDir));
+
+// ---------- settings (API keys for autofill) ----------
+
+function saveSettings() {
+  fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2));
+}
+
+ipcMain.handle('settings:get', () => ({
+  tmdbKey: settings.tmdbKey || '',
+  igdbClientId: settings.igdbClientId || '',
+  igdbClientSecret: settings.igdbClientSecret || '',
+}));
+
+ipcMain.handle('settings:save', (event, s) => {
+  // New Twitch credentials invalidate any cached IGDB token.
+  if (s.igdbClientId !== settings.igdbClientId || s.igdbClientSecret !== settings.igdbClientSecret) {
+    delete settings.igdbToken;
+  }
+  settings.tmdbKey = s.tmdbKey;
+  settings.igdbClientId = s.igdbClientId;
+  settings.igdbClientSecret = s.igdbClientSecret;
+  saveSettings();
+});
+
+// ---------- metadata autofill ----------
+// Each provider returns [{ title, year, imageUrl, subtitle, source }].
+// Books (Open Library) and music (iTunes) need no key; movies/TV/anime need a
+// TMDB key and games need Twitch (IGDB) credentials — both free.
+
+// TMDB accepts either a v3 api key (query param) or a v4 read token (Bearer).
+async function tmdbFetch(pathAndQuery) {
+  const key = (settings.tmdbKey || '').trim();
+  if (!key) throw new Error('Movies/TV need a free TMDB API key — add it in Settings (gear icon).');
+  const isV4 = key.startsWith('eyJ');
+  const url = 'https://api.themoviedb.org/3' + pathAndQuery +
+    (isV4 ? '' : '&api_key=' + encodeURIComponent(key));
+  const res = await net.fetch(url, isV4 ? { headers: { Authorization: 'Bearer ' + key } } : undefined);
+  if (!res.ok) throw new Error('TMDB error ' + res.status + ' — check your API key in Settings.');
+  return res.json();
+}
+
+async function searchTMDB(query) {
+  const data = await tmdbFetch(`/search/multi?include_adult=false&query=${encodeURIComponent(query)}`);
+  return data.results
+    .filter((r) => r.media_type === 'movie' || r.media_type === 'tv')
+    .slice(0, 8)
+    .map((r) => ({
+      title: r.title || r.name,
+      year: parseInt((r.release_date || r.first_air_date || '').slice(0, 4), 10) || null,
+      imageUrl: r.poster_path ? 'https://image.tmdb.org/t/p/w342' + r.poster_path : null,
+      subtitle: r.media_type === 'tv' ? 'TV' : 'Movie',
+      source: 'TMDB',
+    }));
+}
+
+async function igdbToken() {
+  if (!settings.igdbClientId || !settings.igdbClientSecret) {
+    throw new Error('Games need free Twitch/IGDB credentials — add them in Settings (gear icon).');
+  }
+  const cached = settings.igdbToken;
+  if (cached && cached.expiresAt > Date.now() + 60_000) return cached.token;
+  const res = await net.fetch(
+    'https://id.twitch.tv/oauth2/token' +
+    `?client_id=${encodeURIComponent(settings.igdbClientId)}` +
+    `&client_secret=${encodeURIComponent(settings.igdbClientSecret)}` +
+    '&grant_type=client_credentials',
+    { method: 'POST' });
+  if (!res.ok) throw new Error('Twitch auth failed (' + res.status + ') — check your IGDB credentials in Settings.');
+  const data = await res.json();
+  settings.igdbToken = { token: data.access_token, expiresAt: Date.now() + data.expires_in * 1000 };
+  saveSettings();
+  return settings.igdbToken.token;
+}
+
+async function searchIGDB(query) {
+  const token = await igdbToken();
+  const res = await net.fetch('https://api.igdb.com/v4/games', {
+    method: 'POST',
+    headers: {
+      'Client-ID': settings.igdbClientId,
+      Authorization: 'Bearer ' + token,
+      'Content-Type': 'text/plain',
+    },
+    body: `search "${query.replace(/["\\]/g, '')}"; fields name, first_release_date, cover.image_id; limit 8;`,
+  });
+  if (!res.ok) throw new Error('IGDB error ' + res.status);
+  const data = await res.json();
+  return data.map((g) => ({
+    title: g.name,
+    year: g.first_release_date ? new Date(g.first_release_date * 1000).getUTCFullYear() : null,
+    imageUrl: g.cover ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${g.cover.image_id}.jpg` : null,
+    subtitle: null,
+    source: 'IGDB',
+  }));
+}
+
+async function searchOpenLibrary(query) {
+  const res = await net.fetch(
+    `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=8&fields=title,author_name,first_publish_year,cover_i`);
+  if (!res.ok) throw new Error('Open Library error ' + res.status);
+  const data = await res.json();
+  return data.docs.map((d) => ({
+    title: d.title,
+    year: d.first_publish_year || null,
+    imageUrl: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-L.jpg` : null,
+    subtitle: d.author_name ? d.author_name[0] : null,
+    source: 'Open Library',
+  }));
+}
+
+async function searchITunes(query) {
+  const res = await net.fetch(
+    `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=album&limit=8`);
+  if (!res.ok) throw new Error('iTunes error ' + res.status);
+  const data = await res.json();
+  return data.results.map((r) => ({
+    title: r.collectionName,
+    year: r.releaseDate ? new Date(r.releaseDate).getUTCFullYear() : null,
+    imageUrl: r.artworkUrl100 ? r.artworkUrl100.replace('100x100', '600x600') : null,
+    subtitle: r.artistName || null,
+    source: 'iTunes',
+  }));
+}
+
+ipcMain.handle('meta:search', async (event, { query, type }) => {
+  try {
+    let results = [];
+    if (type === 'game') results = await searchIGDB(query);
+    else if (type === 'movie' || type === 'tv' || type === 'anime') results = await searchTMDB(query);
+    else if (type === 'book') results = await searchOpenLibrary(query);
+    else if (type === 'music') results = await searchITunes(query);
+    return { ok: true, results };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
+// Download a cover from a search result into the images folder, same as a
+// manually picked file.
+ipcMain.handle('image:fromUrl', async (event, url) => {
+  if (!/^https:\/\//.test(url)) return null;
+  const res = await net.fetch(url);
+  if (!res.ok) return null;
+  const buf = Buffer.from(await res.arrayBuffer());
+  const ext = (res.headers.get('content-type') || '').includes('png') ? '.png' : '.jpg';
+  const name = crypto.randomUUID() + ext;
+  fs.writeFileSync(path.join(imagesDir, name), buf);
+  return name;
+});

@@ -229,3 +229,43 @@ hr { border: none; border-top: 1px solid #2a2d35; margin: 16px 0; }
 }
 
 #empty { text-align: center; margin-top: 60px; }
+
+/* ---------- autofill ---------- */
+
+.autofill-row { display: flex; gap: 8px; }
+.autofill-row input { flex: 1; }
+
+#autofill-results {
+  margin-top: 8px;
+  border: 1px solid #3a3d46;
+  border-radius: 10px;
+  max-height: 280px;
+  overflow-y: auto;
+  background: #181a1f;
+}
+#autofill-results > p { padding: 4px 12px; }
+.autofill-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid #2a2d35;
+  border-radius: 0;
+  padding: 8px 10px;
+}
+.autofill-item:last-child { border-bottom: none; }
+.autofill-item:hover { background: #23262e; filter: none; }
+.autofill-item img,
+.autofill-noimg {
+  width: 36px;
+  height: 54px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: #2a2d35;
+  flex-shrink: 0;
+  display: block;
+}
+.autofill-text { display: flex; flex-direction: column; gap: 2px; }
