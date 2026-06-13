@@ -18,6 +18,7 @@ let editingLogId = null;    // log being edited in the log dialog (null = adding
 let entryCover = null;      // image filename chosen in the entry dialog
 let autofillResults = [];   // last search results shown in the entry dialog
 let entryTags = [];         // tags being edited in the entry dialog
+let favOnly = false;        // header heart toggle: show favorites only
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -176,6 +177,7 @@ function render() {
   if (type) items = items.filter((x) => x.m.type === type);
   if (status) items = items.filter((x) => x.log && x.log.status === status);
   if (tag) items = items.filter((x) => (x.m.tags || []).includes(tag));
+  if (favOnly) items = items.filter((x) => x.m.favorite);
 
   const compare = {
     recent: (a, b) => ((b.log && b.log.createdAt) || '').localeCompare((a.log && a.log.createdAt) || ''),
@@ -214,6 +216,7 @@ function render() {
 function cardHTML(m, log) {
   return `
     <article class="card" data-id="${m.id}">
+      ${m.favorite ? '<span class="card-fav" title="Favorite">♥</span>' : ''}
       ${coverHTML(m)}
       <div class="card-overlay">
         <h3>${esc(m.title)}</h3>
@@ -262,6 +265,9 @@ function renderDetail() {
           : ''}
         <div class="row">
           <button id="btn-add-log">+ Add log</button>
+          <button id="btn-fav-media" class="ghost ${m.favorite ? 'is-fav' : ''}">
+            ${m.favorite ? '♥ Favorited' : '♡ Favorite'}
+          </button>
           <button id="btn-edit-media" class="ghost">Edit</button>
           <button id="btn-delete-media" class="danger">Delete</button>
         </div>
@@ -655,6 +661,13 @@ const logRating = makeStarInput($('#l-rating'));
 ['#search', '#filter-type', '#filter-status', '#filter-tag', '#sort-by']
   .forEach((sel) => $(sel).addEventListener('input', render));
 
+$('#filter-fav').addEventListener('click', () => {
+  favOnly = !favOnly;
+  $('#filter-fav').classList.toggle('active', favOnly);
+  $('#filter-fav').setAttribute('aria-pressed', String(favOnly));
+  render();
+});
+
 $('#f-tag-input').addEventListener('keydown', (e) => {
   if (e.key === 'Enter' || e.key === ',') {
     e.preventDefault();
@@ -700,6 +713,13 @@ $('#detail-content').addEventListener('click', async (e) => {
   const t = e.target;
   if (t.classList.contains('spoiler')) { t.classList.toggle('revealed'); return; }
   if (t.id === 'btn-add-log') openLogDialog(null);
+  if (t.closest('#btn-fav-media')) {
+    const m = lib.media.find((x) => x.id === currentMediaId);
+    await window.api.saveMedia({ ...m, favorite: !m.favorite });
+    await refresh();
+    renderDetail();
+    return;
+  }
   if (t.id === 'btn-edit-media') openEntryDialog(currentMediaId);
   if (t.id === 'btn-delete-media') {
     if (confirm('Delete this entry and all of its logs?')) {

@@ -504,6 +504,36 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 .key-status { font-size: 12px; font-weight: 600; }
 .key-ok { color: #7fd6a4; }
 .key-no { color: var(--muted); font-weight: 400; }
+
+/* ---------- favorites ---------- */
+
+/* heart badge on a favorited card */
+.card-fav {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  font-size: 17px;
+  line-height: 1;
+  color: #ff5e7a;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+}
+
+/* header heart toggle */
+.fav-toggle.active {
+  color: #ff5e7a;
+  border-color: rgba(255, 94, 122, 0.5);
+  background: rgba(255, 94, 122, 0.12);
+}
+.fav-toggle.active svg { fill: #ff5e7a; }
+
+/* favorite button in the detail view */
+#btn-fav-media.is-fav {
+  color: #ff8095;
+  border-color: rgba(255, 94, 122, 0.5);
+  background: rgba(255, 94, 122, 0.12);
+}
 .video {
   width: 100%;
   aspect-ratio: 16 / 9;
