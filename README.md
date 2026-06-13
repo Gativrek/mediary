@@ -72,11 +72,21 @@ Design decisions made with the future public version in mind:
     { "id": "uuid", "mediaId": "uuid", "dateConsumed": "2026-06-10",
       "status": "completed", "rating": 9, "review": "…",
       "videoUrl": null, "createdAt": "…", "updatedAt": "…" }
+  ],
+  "lists": [
+    { "id": "uuid", "name": "Top 10 of 2026", "description": "",
+      "items": ["media-uuid", "media-uuid"],
+      "createdAt": "…", "updatedAt": "…" }
   ]
 }
 ```
 
 `status` is one of: `completed`, `in-progress`, `dropped`, `backlog`, `wishlist`.
+
+**Lists** are ordered collections of media (the `items` array holds media ids
+in display order). Manage them from the Lists button in the header; add an
+entry to a list from its detail view; while viewing a list, drag covers to
+reorder. Deleting a media item removes it from every list automatically.
 
 Reviews support lightweight inline Markdown: `**bold**`, `*italic*`,
 `~~strike~~`, `` `code` ``, `[link](url)` (http/https/mailto only), and

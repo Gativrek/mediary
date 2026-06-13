@@ -28,12 +28,16 @@ let settings;  // { tmdbKey, igdbClientId, igdbClientSecret, igdbToken }
 // ---------- storage ----------
 
 function loadLibrary() {
+  let lib;
   try {
-    return JSON.parse(fs.readFileSync(dbFile, 'utf8'));
+    lib = JSON.parse(fs.readFileSync(dbFile, 'utf8'));
   } catch {
     // First run (or unreadable file): start with an empty library.
-    return { version: 1, media: [], logs: [] };
+    lib = { version: 1, media: [], logs: [] };
   }
+  // Ensure newer fields exist for libraries created by older versions.
+  if (!Array.isArray(lib.lists)) lib.lists = [];
+  return lib;
 }
 
 function saveLibrary() {
@@ -163,11 +167,44 @@ ipcMain.handle('media:delete', (event, id) => {
   }
   library.media = library.media.filter((m) => m.id !== id);
   library.logs = library.logs.filter((l) => l.mediaId !== id);
+  // Drop the deleted media from every list it appears in.
+  for (const list of library.lists) {
+    list.items = list.items.filter((mid) => mid !== id);
+  }
   saveLibrary();
 });
 
 ipcMain.handle('log:delete', (event, id) => {
   library.logs = library.logs.filter((l) => l.id !== id);
+  saveLibrary();
+});
+
+// ---------- lists / collections ----------
+
+// Upsert a list. New lists get a UUID and an empty items array here.
+ipcMain.handle('list:save', (event, list) => {
+  const now = new Date().toISOString();
+  list.updatedAt = now;
+  if (list.id) {
+    const i = library.lists.findIndex((l) => l.id === list.id);
+    if (i === -1) throw new Error('list not found: ' + list.id);
+    list.createdAt = library.lists[i].createdAt;
+    // Keep only media ids that still exist, preserving the given order.
+    const have = new Set(library.media.map((m) => m.id));
+    list.items = (list.items || []).filter((mid) => have.has(mid));
+    library.lists[i] = list;
+  } else {
+    list.id = crypto.randomUUID();
+    list.createdAt = now;
+    list.items = list.items || [];
+    library.lists.push(list);
+  }
+  saveLibrary();
+  return list;
+});
+
+ipcMain.handle('list:delete', (event, id) => {
+  library.lists = library.lists.filter((l) => l.id !== id);
   saveLibrary();
 });
 

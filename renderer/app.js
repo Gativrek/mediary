@@ -19,6 +19,8 @@ let entryCover = null;      // image filename chosen in the entry dialog
 let autofillResults = [];   // last search results shown in the entry dialog
 let entryTags = [];         // tags being edited in the entry dialog
 let favOnly = false;        // header heart toggle: show favorites only
+let currentListId = null;   // when set, the grid shows this list in its order
+let dragMediaId = null;     // media id being dragged to reorder within a list
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -164,6 +166,14 @@ function populateTagFilter() {
 // ---------- main grid ----------
 
 function render() {
+  // List view is a distinct mode: items shown in the list's own order,
+  // reorderable by drag, with the normal filters/shelves bypassed.
+  const list = currentListId && lib.lists.find((l) => l.id === currentListId);
+  if (currentListId && !list) currentListId = null;       // list was deleted
+  $('#list-banner').style.display = list ? 'block' : 'none';
+  document.querySelector('.filters').style.visibility = list ? 'hidden' : 'visible';
+  if (list) { renderListView(list); return; }
+
   const q = $('#search').value.trim().toLowerCase();
   const type = $('#filter-type').value;
   const status = $('#filter-status').value;
@@ -232,6 +242,36 @@ function cardHTML(m, log) {
     </article>`;
 }
 
+// List view: the list's media in its stored order, each card draggable to
+// reorder and carrying a remove-from-list button.
+function renderListView(list) {
+  $('#list-banner-name').textContent = list.name;
+  $('#list-banner-desc').textContent = list.description || '';
+  $('#list-banner-desc').style.display = list.description ? 'block' : 'none';
+
+  const byId = new Map(lib.media.map((m) => [m.id, m]));
+  const items = list.items.map((id) => byId.get(id)).filter(Boolean);
+
+  $('#grid').innerHTML = `
+    <div class="shelf">
+      <div class="shelf-grid">
+        ${items.map((m, i) => `
+          <article class="card list-card" data-id="${m.id}" draggable="true">
+            <span class="card-rank">${i + 1}</span>
+            <button class="card-remove" title="Remove from list" data-id="${m.id}">✕</button>
+            ${coverHTML(m)}
+            <div class="card-overlay"><h3>${esc(m.title)}</h3></div>
+          </article>`).join('')}
+      </div>
+    </div>`;
+
+  $('#empty').style.display = 'none';
+  if (items.length === 0) {
+    $('#grid').innerHTML =
+      '<p class="muted" style="margin-top:40px">This list is empty. Open an entry and use “Add to list”.</p>';
+  }
+}
+
 // Bucket by when the latest log was created (matches "Recently added" order).
 function shelfLabel(log) {
   const d = log && (log.createdAt || '').slice(0, 10);
@@ -273,9 +313,23 @@ function renderDetail() {
         </div>
       </div>
     </div>
+    ${listsSectionHTML(m.id)}
     <div class="log-list">
       ${logs.map(logHTML).join('') || '<p class="muted">No logs yet.</p>'}
     </div>`;
+}
+
+// Toggleable chips for each list, showing which contain this media item.
+function listsSectionHTML(mediaId) {
+  if (lib.lists.length === 0) {
+    return '<p class="muted small lists-section">No lists yet — create one from the Lists button in the header.</p>';
+  }
+  const chips = lib.lists.map((l) => {
+    const inList = l.items.includes(mediaId);
+    return `<button class="list-chip ${inList ? 'in' : ''}" data-list-id="${l.id}">
+      ${inList ? '✓ ' : '+ '}${esc(l.name)}</button>`;
+  }).join('');
+  return `<div class="lists-section"><span class="lbl">Add to list</span><div class="list-chips">${chips}</div></div>`;
 }
 
 function logHTML(log) {
@@ -653,6 +707,62 @@ function openStats() {
   $('#stats-dialog').showModal();
 }
 
+// ---------- lists ----------
+
+function openLists() {
+  renderListsManager();
+  $('#lists-dialog').showModal();
+}
+
+function renderListsManager() {
+  const box = $('#lists-list');
+  if (lib.lists.length === 0) {
+    box.innerHTML = '<p class="muted small">No lists yet. Create one above.</p>';
+    return;
+  }
+  box.innerHTML = lib.lists.map((l) => `
+    <div class="list-row" data-list-id="${l.id}">
+      <div class="list-row-main">
+        <strong>${esc(l.name)}</strong>
+        <span class="muted small">${l.items.length} item${l.items.length === 1 ? '' : 's'}</span>
+      </div>
+      <button class="link-btn list-view-btn">view</button>
+      <button class="link-btn list-rename-btn">rename</button>
+      <button class="link-btn list-delete-btn">delete</button>
+    </div>`).join('');
+}
+
+async function createListFromInput() {
+  const name = $('#list-new-name').value.trim();
+  if (!name) return;
+  await window.api.saveList({ name });
+  $('#list-new-name').value = '';
+  await refresh();
+  renderListsManager();
+}
+
+// Add or remove a media item from a list (append on add, preserve order).
+async function toggleListMembership(listId, mediaId) {
+  const list = lib.lists.find((l) => l.id === listId);
+  if (!list) return;
+  const items = list.items.includes(mediaId)
+    ? list.items.filter((id) => id !== mediaId)
+    : [...list.items, mediaId];
+  await window.api.saveList({ ...list, items });
+  await refresh();
+}
+
+function enterList(listId) {
+  currentListId = listId;
+  $('#lists-dialog').close();
+  render();
+}
+
+function exitList() {
+  currentListId = null;
+  render();
+}
+
 // ---------- wiring ----------
 
 const entryRating = makeStarInput($('#f-rating'));
@@ -703,15 +813,106 @@ $('#btn-folder').addEventListener('click', () => window.api.openDataFolder());
 $('#btn-stats').addEventListener('click', openStats);
 $('#stats-close').addEventListener('click', () => $('#stats-dialog').close());
 
-$('#grid').addEventListener('click', (e) => {
+$('#btn-lists').addEventListener('click', openLists);
+$('#lists-close').addEventListener('click', () => $('#lists-dialog').close());
+$('#list-new-add').addEventListener('click', createListFromInput);
+$('#list-new-name').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); createListFromInput(); }
+});
+$('#list-exit').addEventListener('click', exitList);
+
+$('#lists-list').addEventListener('click', async (e) => {
+  const row = e.target.closest('.list-row');
+  if (!row) return;
+  const list = lib.lists.find((l) => l.id === row.dataset.listId);
+  if (!list) return;
+  if (e.target.classList.contains('list-view-btn')) enterList(list.id);
+  else if (e.target.classList.contains('list-rename-btn')) {
+    // Inline rename — Electron has no window.prompt().
+    const main = row.querySelector('.list-row-main');
+    main.innerHTML = `<input class="list-rename-input" type="text" value="${esc(list.name)}">`;
+    const input = main.querySelector('input');
+    input.focus();
+    input.select();
+    let done = false;
+    const commit = async () => {
+      if (done) return;
+      done = true;
+      const name = input.value.trim();
+      if (name && name !== list.name) {
+        await window.api.saveList({ ...list, name });
+        await refresh();
+      }
+      renderListsManager();
+    };
+    input.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') { ev.preventDefault(); commit(); }
+      else if (ev.key === 'Escape') { done = true; renderListsManager(); }
+    });
+    input.addEventListener('blur', commit);
+  } else if (e.target.classList.contains('list-delete-btn')) {
+    if (confirm(`Delete the list “${list.name}”? (Your entries are not deleted.)`)) {
+      if (currentListId === list.id) currentListId = null;
+      await window.api.deleteList(list.id);
+      await refresh();
+      renderListsManager();
+    }
+  }
+});
+
+$('#grid').addEventListener('click', async (e) => {
+  // Remove-from-list button (list view only) — don't open the detail.
+  const rm = e.target.closest('.card-remove');
+  if (rm) {
+    e.stopPropagation();
+    await toggleListMembership(currentListId, rm.dataset.id);
+    return;
+  }
   const card = e.target.closest('.card');
   if (card) openDetail(card.dataset.id);
+});
+
+// Drag-and-drop reordering within a list.
+$('#grid').addEventListener('dragstart', (e) => {
+  const card = e.target.closest('.list-card');
+  if (!card) return;
+  dragMediaId = card.dataset.id;
+  e.dataTransfer.effectAllowed = 'move';
+  card.classList.add('dragging');
+});
+$('#grid').addEventListener('dragend', (e) => {
+  const card = e.target.closest('.list-card');
+  if (card) card.classList.remove('dragging');
+});
+$('#grid').addEventListener('dragover', (e) => {
+  if (!dragMediaId) return;
+  e.preventDefault();   // allow drop
+});
+$('#grid').addEventListener('drop', async (e) => {
+  if (!dragMediaId) return;
+  e.preventDefault();
+  const target = e.target.closest('.list-card');
+  const list = lib.lists.find((l) => l.id === currentListId);
+  if (!list || !target || target.dataset.id === dragMediaId) { dragMediaId = null; return; }
+
+  const items = list.items.filter((id) => id !== dragMediaId);
+  const at = items.indexOf(target.dataset.id);
+  items.splice(at, 0, dragMediaId);   // insert before the drop target
+  dragMediaId = null;
+  await window.api.saveList({ ...list, items });
+  await refresh();
 });
 
 // One listener handles every button inside the (re-rendered) detail content.
 $('#detail-content').addEventListener('click', async (e) => {
   const t = e.target;
   if (t.classList.contains('spoiler')) { t.classList.toggle('revealed'); return; }
+  const chip = t.closest('.list-chip');
+  if (chip) {
+    await toggleListMembership(chip.dataset.listId, currentMediaId);
+    renderDetail();
+    return;
+  }
   if (t.id === 'btn-add-log') openLogDialog(null);
   if (t.closest('#btn-fav-media')) {
     const m = lib.media.find((x) => x.id === currentMediaId);

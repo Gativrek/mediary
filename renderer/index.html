@@ -62,6 +62,11 @@
     <span class="spacer"></span>
 
     <div class="util">
+      <button id="btn-lists" class="icon-btn" title="Lists" aria-label="Lists">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line>
+        </svg>
+      </button>
       <button id="btn-stats" class="icon-btn" title="Statistics" aria-label="Statistics">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line>
@@ -102,8 +107,16 @@
   <div id="ambient"></div>
 
   <main>
+    <div id="list-banner" style="display:none">
+      <div class="list-banner-text">
+        <button id="list-exit" class="link-btn">← All items</button>
+        <h2 id="list-banner-name"></h2>
+        <p id="list-banner-desc" class="muted small"></p>
+        <p class="muted small list-hint">Drag covers to reorder · click the ✕ on a cover to remove it</p>
+      </div>
+    </div>
     <div id="grid"></div>
-    <p id="empty" class="muted" style="display:none">Nothing logged yet. Click “+ Add entry” to start.</p>
+    <p id="empty" class="muted" style="display:none">Nothing logged yet. Click the + button to start.</p>
   </main>
 
   <!-- Add a new entry (media + first log), or edit a media item's info -->
@@ -234,6 +247,23 @@
       <button id="log-cancel" class="ghost">Cancel</button>
       <button id="log-save" class="primary">Save</button>
     </div>
+  </dialog>
+
+  <!-- lists manager -->
+  <dialog id="lists-dialog">
+    <div class="stats-head">
+      <h2>Lists</h2>
+      <button id="lists-close" class="icon-btn" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="autofill-row">
+      <input id="list-new-name" type="text" placeholder="New list name…" autocomplete="off">
+      <button id="list-new-add" class="primary">Create</button>
+    </div>
+    <div id="lists-list"></div>
   </dialog>
 
   <!-- statistics dashboard -->

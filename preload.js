@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld('api', {
   saveLog: (log) => ipcRenderer.invoke('log:save', log),
   deleteMedia: (id) => ipcRenderer.invoke('media:delete', id),
   deleteLog: (id) => ipcRenderer.invoke('log:delete', id),
+  saveList: (list) => ipcRenderer.invoke('list:save', list),
+  deleteList: (id) => ipcRenderer.invoke('list:delete', id),
   pickImage: () => ipcRenderer.invoke('image:pick'),
   exportData: () => ipcRenderer.invoke('data:export'),
   importData: () => ipcRenderer.invoke('data:import'),

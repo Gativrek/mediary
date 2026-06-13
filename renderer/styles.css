@@ -569,6 +569,82 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
   border-color: rgba(255, 94, 122, 0.5);
   background: rgba(255, 94, 122, 0.12);
 }
+
+/* ---------- lists ---------- */
+
+/* list-view banner */
+#list-banner { padding: 20px 20px 0; }
+#list-banner h2 { margin: 8px 0 2px; font-size: 24px; }
+.list-banner-text .list-hint { margin: 6px 0 0; opacity: 0.7; }
+
+/* list manager rows */
+#lists-list { margin-top: 14px; }
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--border);
+}
+.list-row:last-child { border-bottom: none; }
+.list-row-main { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+
+/* add-to-list chips in the detail view */
+.lists-section { margin: 16px 0 4px; }
+.list-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.list-chip {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-bright);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 13px;
+}
+.list-chip.in {
+  background: rgba(123, 92, 184, 0.22);
+  border-color: rgba(123, 92, 184, 0.6);
+  color: #cdb9f2;
+}
+
+/* list-view cards: rank badge, remove button, drag affordance */
+.list-card { cursor: grab; }
+.list-card.dragging { opacity: 0.4; }
+/* stop the cover image from hijacking the card's drag */
+.list-card .cover, .list-card .cover-placeholder { -webkit-user-drag: none; }
+.card-rank {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 999px;
+  background: rgba(9, 10, 13, 0.8);
+  color: #fff;
+}
+.card-remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 3;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(9, 10, 13, 0.8);
+  color: #e89a9a;
+  font-size: 13px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.list-card:hover .card-remove { opacity: 1; }
+.card-remove:hover { background: #a33; color: #fff; filter: none; }
 .video {
   width: 100%;
   aspect-ratio: 16 / 9;
