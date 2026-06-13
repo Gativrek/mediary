@@ -91,6 +91,23 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// Deterministic hue per title, so cover-less entries get varied placeholder
+// colors instead of all sharing one gradient.
+function hueFor(s) {
+  let h = 0;
+  for (const c of s) h = (h * 31 + c.charCodeAt(0)) % 360;
+  return h;
+}
+
+function coverHTML(m) {
+  if (m.coverImage) {
+    return `<img class="cover" src="media-img://img/${esc(m.coverImage)}" alt="">`;
+  }
+  const hue = hueFor(m.title || '?');
+  return `<div class="cover-placeholder" style="background:linear-gradient(160deg, hsl(${hue} 38% 30%), #16181e)">` +
+         `${esc((m.title[0] || '?').toUpperCase())}</div>`;
+}
+
 async function refresh() {
   lib = await window.api.getLibrary();
   populateTagFilter();
@@ -136,9 +153,7 @@ function render() {
 
   $('#grid').innerHTML = items.map(({ m, log }) => `
     <article class="card" data-id="${m.id}">
-      ${m.coverImage
-        ? `<img class="cover" src="media-img://img/${esc(m.coverImage)}" alt="">`
-        : `<div class="cover-placeholder">${esc((m.title[0] || '?').toUpperCase())}</div>`}
+      ${coverHTML(m)}
       <div class="card-body">
         <h3>${esc(m.title)}</h3>
         <div class="card-meta">
@@ -164,9 +179,7 @@ function renderDetail() {
 
   $('#detail-content').innerHTML = `
     <div class="detail-head">
-      ${m.coverImage
-        ? `<img class="cover" src="media-img://img/${esc(m.coverImage)}" alt="">`
-        : `<div class="cover-placeholder">${esc((m.title[0] || '?').toUpperCase())}</div>`}
+      ${coverHTML(m)}
       <div>
         <h2>${esc(m.title)}</h2>
         <div class="card-meta">
