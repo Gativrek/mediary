@@ -570,6 +570,37 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
   background: rgba(255, 94, 122, 0.12);
 }
 
+/* ---------- toasts ---------- */
+
+#toasts {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+.toast {
+  max-width: 360px;
+  padding: 11px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--glass);
+  backdrop-filter: blur(22px) saturate(140%);
+  border: 1px solid var(--border-bright);
+  border-left: 3px solid var(--accent);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.toast.show { opacity: 1; transform: none; }
+.toast-success { border-left-color: #7fd6a4; }
+.toast-error { border-left-color: #e89a9a; }
+
 /* ---------- lists ---------- */
 
 /* list-view banner */

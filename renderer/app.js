@@ -24,6 +24,20 @@ let dragMediaId = null;     // media id being dragged to reorder within a list
 
 const $ = (sel) => document.querySelector(sel);
 
+// Transient bottom-left notification. type: 'info' | 'success' | 'error'.
+function toast(message, type = 'info') {
+  const el = document.createElement('div');
+  el.className = 'toast toast-' + type;
+  el.textContent = message;
+  $('#toasts').appendChild(el);
+  // force reflow so the entrance transition runs, then show
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => {
+    el.classList.remove('show');
+    el.addEventListener('transitionend', () => el.remove(), { once: true });
+  }, 3200);
+}
+
 // Escape user text before putting it into innerHTML.
 const esc = (s) => (s ?? '').toString().replace(/[&<>"']/g,
   (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -405,7 +419,7 @@ function updateCoverPreview() {
 
 async function saveEntry() {
   const title = $('#f-title').value.trim();
-  if (!title) { alert('Title is required.'); return; }
+  if (!title) { toast('Title is required.', 'error'); return; }
 
   const media = await window.api.saveMedia({
     id: editingMediaId || null,
@@ -826,16 +840,18 @@ $('#f-tags').addEventListener('click', (e) => {
 });
 
 $('#btn-add').addEventListener('click', () => openEntryDialog(null));
-$('#btn-export').addEventListener('click', () => window.api.exportData());
+$('#btn-export').addEventListener('click', async () => {
+  if (await window.api.exportData()) toast('Library exported.', 'success');
+});
 $('#btn-import').addEventListener('click', async () => {
   const r = await window.api.importData();
   if (r.canceled) return;
-  if (r.error) { alert(r.error); return; }
+  if (r.error) { toast(r.error, 'error'); return; }
   await refresh();
   const parts = [`${r.addedMedia} title${r.addedMedia === 1 ? '' : 's'}`,
     `${r.addedLogs} log${r.addedLogs === 1 ? '' : 's'}`];
-  alert(`Imported ${parts.join(' and ')}.` +
-    (r.skipped ? ` ${r.skipped} already present (skipped).` : ''));
+  toast(`Imported ${parts.join(' and ')}.` +
+    (r.skipped ? ` ${r.skipped} already present (skipped).` : ''), 'success');
 });
 $('#btn-folder').addEventListener('click', () => window.api.openDataFolder());
 $('#btn-stats').addEventListener('click', openStats);

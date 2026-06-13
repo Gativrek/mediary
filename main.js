@@ -48,6 +48,31 @@ function saveLibrary() {
   fs.renameSync(tmp, dbFile);
 }
 
+const BACKUP_KEEP = 10;
+
+// On launch, snapshot the current library into backups/ and keep the most
+// recent BACKUP_KEEP. Insurance against a bad edit or a corrupted write.
+function backupLibrary() {
+  if (!fs.existsSync(dbFile)) return;   // nothing to back up yet (first run)
+  const backupsDir = path.join(dataDir, 'backups');
+  fs.mkdirSync(backupsDir, { recursive: true });
+
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  try {
+    fs.copyFileSync(dbFile, path.join(backupsDir, `library-${stamp}.json`));
+  } catch { /* a failed backup must never block startup */ }
+
+  // Prune oldest beyond the keep limit.
+  try {
+    const files = fs.readdirSync(backupsDir)
+      .filter((f) => f.startsWith('library-') && f.endsWith('.json'))
+      .sort();   // ISO timestamps sort chronologically
+    for (const f of files.slice(0, Math.max(0, files.length - BACKUP_KEEP))) {
+      fs.rmSync(path.join(backupsDir, f), { force: true });
+    }
+  } catch { /* pruning is best-effort */ }
+}
+
 // ---------- window ----------
 
 let mainWindow = null;
@@ -101,6 +126,7 @@ app.whenReady().then(() => {
 
   fs.mkdirSync(imagesDir, { recursive: true });
   dbFile = path.join(dataDir, 'library.json');
+  backupLibrary();
   library = loadLibrary();
 
   settingsFile = path.join(app.getPath('userData'), 'settings.json');
