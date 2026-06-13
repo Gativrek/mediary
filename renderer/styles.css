@@ -500,6 +500,10 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
   font-family: "Cascadia Code", Consolas, monospace;
   opacity: 0.6;
 }
+
+.key-status { font-size: 12px; font-weight: 600; }
+.key-ok { color: #7fd6a4; }
+.key-no { color: var(--muted); font-weight: 400; }
 .video {
   width: 100%;
   aspect-ratio: 16 / 9;

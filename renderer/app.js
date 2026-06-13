@@ -739,6 +739,11 @@ $('#btn-settings').addEventListener('click', async () => {
   $('#s-tmdb').value = s.tmdbKey;
   $('#s-igdb-id').value = s.igdbClientId;
   $('#s-igdb-secret').value = s.igdbClientSecret;
+  const mark = (ok) => ok
+    ? '<span class="key-ok">✓ saved</span>'
+    : '<span class="key-no">not set</span>';
+  $('#s-tmdb-status').innerHTML = mark(s.hasTmdb);
+  $('#s-igdb-status').innerHTML = mark(s.hasIgdb);
   $('#settings-dialog').showModal();
 });
 $('#settings-cancel').addEventListener('click', () => $('#settings-dialog').close());

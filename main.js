@@ -100,11 +100,7 @@ app.whenReady().then(() => {
   library = loadLibrary();
 
   settingsFile = path.join(app.getPath('userData'), 'settings.json');
-  try {
-    settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
-  } catch {
-    settings = {};
-  }
+  loadSettings();
 
   // Serve stored cover images at media-img://img/<filename>
   protocol.handle('media-img', (request) => {
@@ -255,15 +251,40 @@ ipcMain.handle('data:openFolder', () => shell.openPath(dataDir));
 
 // ---------- settings (API keys for autofill) ----------
 
-function saveSettings() {
-  fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2));
+// Load settings from disk. If the file exists but can't be parsed (e.g. a
+// half-written file from a past crash or race), back it up before falling
+// back to empty — so valid keys are never silently destroyed.
+function loadSettings() {
+  try {
+    settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
+  } catch (err) {
+    if (fs.existsSync(settingsFile)) {
+      try { fs.copyFileSync(settingsFile, settingsFile + '.corrupt-' + Date.now()); } catch {}
+    }
+    settings = {};
+  }
 }
 
-ipcMain.handle('settings:get', () => ({
-  tmdbKey: settings.tmdbKey || '',
-  igdbClientId: settings.igdbClientId || '',
-  igdbClientSecret: settings.igdbClientSecret || '',
-}));
+// Atomic write (temp + rename), same as the library, so a read happening
+// during a write can never see a half-written settings file.
+function saveSettings() {
+  const tmp = settingsFile + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify(settings, null, 2));
+  fs.renameSync(tmp, settingsFile);
+}
+
+ipcMain.handle('settings:get', () => {
+  // Re-read from disk so the dialog always reflects the true saved state,
+  // self-healing any stale or empty in-memory copy.
+  loadSettings();
+  return {
+    tmdbKey: settings.tmdbKey || '',
+    igdbClientId: settings.igdbClientId || '',
+    igdbClientSecret: settings.igdbClientSecret || '',
+    hasTmdb: !!settings.tmdbKey,
+    hasIgdb: !!(settings.igdbClientId && settings.igdbClientSecret),
+  };
+});
 
 ipcMain.handle('settings:save', (event, s) => {
   // New Twitch credentials invalidate any cached IGDB token.
