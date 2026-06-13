@@ -111,7 +111,21 @@ function coverHTML(m) {
 async function refresh() {
   lib = await window.api.getLibrary();
   populateTagFilter();
+  renderAmbient();
   render();
+}
+
+// Blur the most recently logged covers into the page background, so the
+// library tints its own walls (rebuilt only when data changes, not per filter).
+function renderAmbient() {
+  const covers = lib.media
+    .filter((m) => m.coverImage)
+    .map((m) => ({ cover: m.coverImage, log: latestLog(m.id) }))
+    .sort((a, b) => ((b.log && b.log.createdAt) || '').localeCompare((a.log && a.log.createdAt) || ''))
+    .slice(0, 4);
+  $('#ambient').innerHTML = covers
+    .map((x, i) => `<img class="amb amb-${i}" src="media-img://img/${esc(x.cover)}" alt="">`)
+    .join('');
 }
 
 // Rebuild the header tag dropdown from every tag in the library, keeping the
