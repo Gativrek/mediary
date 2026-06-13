@@ -1,6 +1,6 @@
 {
   "name": "mediary",
-  "version": "0.9.1",
+  "version": "0.10.0",
   "description": "Mediary — a personal media diary for games, movies, books and more",
   "main": "main.js",
   "scripts": {

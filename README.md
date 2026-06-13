@@ -78,6 +78,11 @@ Design decisions made with the future public version in mind:
 
 `status` is one of: `completed`, `in-progress`, `dropped`, `backlog`, `wishlist`.
 
+Reviews support lightweight inline Markdown: `**bold**`, `*italic*`,
+`~~strike~~`, `` `code` ``, `[link](url)` (http/https/mailto only), and
+`||spoiler||` (blurred until clicked). Rendering escapes all HTML first, so
+stored reviews can never inject markup.
+
 ## Metadata autofill
 
 Type a title in the Add entry dialog and click **Autofill** (or press Enter):

@@ -466,6 +466,40 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
   margin: 10px 0 0;
   line-height: 1.55;
 }
+.review a { color: #8db9e8; }
+.review code {
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 0.9em;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.review del { color: var(--muted); }
+
+/* spoiler: blurred + masked until clicked */
+.spoiler {
+  background: #2a2d35;
+  color: transparent;
+  border-radius: 4px;
+  padding: 0 3px;
+  filter: blur(4px);
+  cursor: pointer;
+  transition: filter 0.15s, color 0.15s, background 0.15s;
+  user-select: none;
+}
+.spoiler.revealed {
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  filter: none;
+  user-select: text;
+}
+
+.hint {
+  display: block;
+  margin-top: 5px;
+  font-family: "Cascadia Code", Consolas, monospace;
+  opacity: 0.6;
+}
 .video {
   width: 100%;
   aspect-ratio: 16 / 9;

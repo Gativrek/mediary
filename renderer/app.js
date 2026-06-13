@@ -25,6 +25,25 @@ const $ = (sel) => document.querySelector(sel);
 const esc = (s) => (s ?? '').toString().replace(/[&<>"']/g,
   (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+// Lightweight, XSS-safe inline Markdown for reviews. We escape FIRST, then
+// apply formatting to the escaped text — the markers (* _ ` ~ | [ ]) survive
+// escaping, and no raw user HTML can ever reach the DOM. Line breaks are kept
+// by the .review element's white-space: pre-wrap, so this is inline-only.
+function renderReview(text) {
+  let s = esc(text);
+  // links: only http(s) and mailto, so no javascript: URLs can sneak through
+  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+|mailto:[^)\s]+)\)/g,
+    (_, label, url) => `<a href="${url}" target="_blank" rel="noopener">${label}</a>`);
+  s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+  s = s.replace(/\|\|([^|]+)\|\|/g, '<span class="spoiler">$1</span>');
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+  s = s.replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>');
+  s = s.replace(/(^|[^_])_([^_]+)_/g, '$1<em>$2</em>');
+  s = s.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+  return s;
+}
+
 // ---------- stars ----------
 
 // Read-only star display: gray stars with a gold overlay clipped to the rating.
@@ -265,7 +284,7 @@ function logHTML(log) {
         <button class="link-btn log-edit">edit</button>
         <button class="link-btn log-delete">delete</button>
       </div>
-      ${log.review ? `<p class="review">${esc(log.review)}</p>` : ''}
+      ${log.review ? `<p class="review">${renderReview(log.review)}</p>` : ''}
       ${embed
         ? `<iframe class="video" src="${embed}" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe>`
         : log.videoUrl
@@ -679,6 +698,7 @@ $('#grid').addEventListener('click', (e) => {
 // One listener handles every button inside the (re-rendered) detail content.
 $('#detail-content').addEventListener('click', async (e) => {
   const t = e.target;
+  if (t.classList.contains('spoiler')) { t.classList.toggle('revealed'); return; }
   if (t.id === 'btn-add-log') openLogDialog(null);
   if (t.id === 'btn-edit-media') openEntryDialog(currentMediaId);
   if (t.id === 'btn-delete-media') {
