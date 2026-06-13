@@ -657,6 +657,16 @@ $('#f-tags').addEventListener('click', (e) => {
 
 $('#btn-add').addEventListener('click', () => openEntryDialog(null));
 $('#btn-export').addEventListener('click', () => window.api.exportData());
+$('#btn-import').addEventListener('click', async () => {
+  const r = await window.api.importData();
+  if (r.canceled) return;
+  if (r.error) { alert(r.error); return; }
+  await refresh();
+  const parts = [`${r.addedMedia} title${r.addedMedia === 1 ? '' : 's'}`,
+    `${r.addedLogs} log${r.addedLogs === 1 ? '' : 's'}`];
+  alert(`Imported ${parts.join(' and ')}.` +
+    (r.skipped ? ` ${r.skipped} already present (skipped).` : ''));
+});
 $('#btn-folder').addEventListener('click', () => window.api.openDataFolder());
 $('#btn-stats').addEventListener('click', openStats);
 $('#stats-close').addEventListener('click', () => $('#stats-dialog').close());

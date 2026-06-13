@@ -30,6 +30,11 @@ MediaLog name is migrated there automatically on first launch):
 The **Data folder** button in the app opens this folder. Back it up by copying
 it anywhere; **Export** saves a standalone JSON snapshot.
 
+**Import** merges another export back in: new titles and logs are added, and
+anything already present (matched by id) is skipped — it never deletes or
+overwrites, so importing is always safe. Exports carry no image files, so an
+imported entry whose cover isn't present locally falls back to a placeholder.
+
 ## Architecture (and why)
 
 ```

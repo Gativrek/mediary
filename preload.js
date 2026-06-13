@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('api', {
   deleteLog: (id) => ipcRenderer.invoke('log:delete', id),
   pickImage: () => ipcRenderer.invoke('image:pick'),
   exportData: () => ipcRenderer.invoke('data:export'),
+  importData: () => ipcRenderer.invoke('data:import'),
   openDataFolder: () => ipcRenderer.invoke('data:openFolder'),
   metaSearch: (query, type) => ipcRenderer.invoke('meta:search', { query, type }),
   imageFromUrl: (url) => ipcRenderer.invoke('image:fromUrl', url),

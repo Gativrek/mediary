@@ -201,6 +201,56 @@ ipcMain.handle('data:export', async () => {
   return true;
 });
 
+// Import another library file and MERGE it in: new media/logs are added,
+// anything whose id already exists is skipped. Never deletes or overwrites,
+// so an import can't destroy the current library.
+ipcMain.handle('data:import', async () => {
+  const result = await dialog.showOpenDialog({
+    title: 'Import library',
+    filters: [{ name: 'JSON', extensions: ['json'] }],
+    properties: ['openFile'],
+  });
+  if (result.canceled || result.filePaths.length === 0) return { canceled: true };
+
+  let incoming;
+  try {
+    incoming = JSON.parse(fs.readFileSync(result.filePaths[0], 'utf8'));
+  } catch {
+    return { error: "That file isn't valid JSON." };
+  }
+  if (!incoming || !Array.isArray(incoming.media) || !Array.isArray(incoming.logs)) {
+    return { error: "That doesn't look like a Mediary export (missing media/logs)." };
+  }
+
+  const haveMedia = new Set(library.media.map((m) => m.id));
+  const haveLogs = new Set(library.logs.map((l) => l.id));
+  let addedMedia = 0, addedLogs = 0, skipped = 0;
+
+  for (const m of incoming.media) {
+    if (m && m.id && !haveMedia.has(m.id)) {
+      // Exports carry no image files; drop cover refs we don't actually have
+      // so they fall back to the placeholder instead of showing as broken.
+      if (m.coverImage && !fs.existsSync(path.join(imagesDir, path.basename(m.coverImage)))) {
+        m.coverImage = null;
+      }
+      library.media.push(m);
+      haveMedia.add(m.id);
+      addedMedia++;
+    } else { skipped++; }
+  }
+  // Only import logs whose media exists (either pre-existing or just added).
+  for (const l of incoming.logs) {
+    if (l && l.id && !haveLogs.has(l.id) && haveMedia.has(l.mediaId)) {
+      library.logs.push(l);
+      haveLogs.add(l.id);
+      addedLogs++;
+    }
+  }
+
+  saveLibrary();
+  return { addedMedia, addedLogs, skipped };
+});
+
 ipcMain.handle('data:openFolder', () => shell.openPath(dataDir));
 
 // ---------- settings (API keys for autofill) ----------
