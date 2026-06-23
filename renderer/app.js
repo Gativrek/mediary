@@ -125,9 +125,10 @@ function logsFor(mediaId) {
 }
 const latestLog = (mediaId) => logsFor(mediaId)[0] || null;
 
-function youtubeEmbed(url) {
+// Extract the 11-char YouTube video id from any common URL form.
+function youtubeId(url) {
   const m = (url || '').match(/(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/|\/live\/)([\w-]{11})/);
-  return m ? `https://www.youtube-nocookie.com/embed/${m[1]}` : null;
+  return m ? m[1] : null;
 }
 
 const formatDate = (iso) => (iso ? new Date(iso + 'T00:00:00').toLocaleDateString() : '');
@@ -357,7 +358,20 @@ function listsSectionHTML(mediaId) {
 }
 
 function logHTML(log) {
-  const embed = log.videoUrl ? youtubeEmbed(log.videoUrl) : null;
+  const ytId = log.videoUrl ? youtubeId(log.videoUrl) : null;
+  let videoHTML = '';
+  if (ytId) {
+    // YouTube blocks inline embedding under file://, so link out instead:
+    // a clickable poster thumbnail that opens the video in the browser.
+    videoHTML = `
+      <a class="video-thumb" href="${esc(log.videoUrl)}" target="_blank" rel="noopener" title="Watch on YouTube">
+        <img src="https://i.ytimg.com/vi/${ytId}/hqdefault.jpg" alt="" loading="lazy">
+        <span class="video-play" aria-hidden="true"></span>
+        <span class="video-tag">Watch on YouTube</span>
+      </a>`;
+  } else if (log.videoUrl) {
+    videoHTML = `<p><a href="${esc(log.videoUrl)}" target="_blank" rel="noopener">${esc(log.videoUrl)}</a></p>`;
+  }
   return `
     <div class="log" data-log-id="${log.id}">
       <div class="log-head">
@@ -369,11 +383,7 @@ function logHTML(log) {
         <button class="link-btn log-delete">delete</button>
       </div>
       ${log.review ? `<p class="review">${renderReview(log.review)}</p>` : ''}
-      ${embed
-        ? `<iframe class="video" src="${embed}" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe>`
-        : log.videoUrl
-          ? `<p><a href="${esc(log.videoUrl)}" target="_blank">${esc(log.videoUrl)}</a></p>`
-          : ''}
+      ${videoHTML}
     </div>`;
 }
 
