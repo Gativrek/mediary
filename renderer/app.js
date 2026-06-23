@@ -21,6 +21,7 @@ let entryTags = [];         // tags being edited in the entry dialog
 let favOnly = false;        // header heart toggle: show favorites only
 let currentListId = null;   // when set, the grid shows this list in its order
 let dragMediaId = null;     // media id being dragged to reorder within a list
+let animateGrid = false;    // animate cards in on the next render (set by refresh)
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -160,6 +161,7 @@ async function refresh() {
   lib = await window.api.getLibrary();
   populateTagFilter();
   renderAmbient();
+  animateGrid = true;   // animate the cards in on data load, not on every filter
   render();
 }
 
@@ -183,7 +185,7 @@ function populateTagFilter() {
   const current = sel.value;
   const tags = [...new Set(lib.media.flatMap((m) => m.tags || []))]
     .sort((a, b) => a.localeCompare(b));
-  sel.innerHTML = '<option value="">Tags</option>' +
+  sel.innerHTML = '<option value="">All</option>' +
     tags.map((t) => `<option value="${esc(t)}">${esc(t)}</option>`).join('');
   sel.value = tags.includes(current) ? current : '';
 }
@@ -191,6 +193,11 @@ function populateTagFilter() {
 // ---------- main grid ----------
 
 function render() {
+  // Animate cards in only on data loads (set by refresh), not on every filter
+  // keystroke — toggling the class off keeps filtered re-renders snappy.
+  $('#grid').classList.toggle('animate-in', animateGrid);
+  animateGrid = false;
+
   // List view is a distinct mode: items shown in the list's own order,
   // reorderable by drag, with the normal filters/shelves bypassed.
   const list = currentListId && lib.lists.find((l) => l.id === currentListId);
@@ -244,14 +251,14 @@ function render() {
       </div>`;
   }
 
-  $('#empty').style.display = items.length ? 'none' : 'block';
+  $('#empty').style.display = items.length ? 'none' : 'flex';
 }
 
 // Pure-art card; the details live in an overlay revealed on hover.
 function cardHTML(m, log) {
   return `
     <article class="card" data-id="${m.id}">
-      ${m.favorite ? '<span class="card-fav" title="Favorite">♥</span>' : ''}
+      ${m.favorite ? '<span class="card-fav" title="Favorite"></span>' : ''}
       ${coverHTML(m)}
       <div class="card-overlay">
         <h3>${esc(m.title)}</h3>
@@ -292,8 +299,14 @@ function renderListView(list) {
 
   $('#empty').style.display = 'none';
   if (items.length === 0) {
-    $('#grid').innerHTML =
-      '<p class="muted" style="margin-top:40px">This list is empty. Open an entry and use “Add to list”.</p>';
+    $('#grid').innerHTML = `
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line>
+        </svg>
+        <h2>This list is empty</h2>
+        <p class="muted">Open any entry and use <strong>Add to list</strong> to drop it in here.</p>
+      </div>`;
   }
 }
 
@@ -336,9 +349,9 @@ function renderDetail() {
           <button id="btn-edit-media" class="ghost">Edit</button>
           <button id="btn-delete-media" class="danger">Delete</button>
         </div>
+        ${listsSectionHTML(m.id)}
       </div>
     </div>
-    ${listsSectionHTML(m.id)}
     <div class="log-list">
       ${logs.map(logHTML).join('') || '<p class="muted">No logs yet.</p>'}
     </div>`;
@@ -347,7 +360,7 @@ function renderDetail() {
 // Toggleable chips for each list, showing which contain this media item.
 function listsSectionHTML(mediaId) {
   if (lib.lists.length === 0) {
-    return '<p class="muted small lists-section">No lists yet — create one from the Lists button in the header.</p>';
+    return '<p class="muted small lists-section">No lists yet — <button class="link-btn" id="detail-create-list">create a list</button></p>';
   }
   const chips = lib.lists.map((l) => {
     const inList = l.items.includes(mediaId);
@@ -746,6 +759,7 @@ function openStats() {
 function openLists() {
   renderListsManager();
   $('#lists-dialog').showModal();
+  $('#list-new-name').focus();
 }
 
 function renderListsManager() {
@@ -879,6 +893,10 @@ $('#stats-close').addEventListener('click', () => $('#stats-dialog').close());
 
 $('#btn-lists').addEventListener('click', openLists);
 $('#lists-close').addEventListener('click', () => $('#lists-dialog').close());
+// Keep an open detail view in sync with lists created/changed in the manager.
+$('#lists-dialog').addEventListener('close', () => {
+  if ($('#detail-dialog').open) renderDetail();
+});
 $('#list-new-add').addEventListener('click', createListFromInput);
 ['#list-new-name', '#list-new-desc'].forEach((sel) => $(sel).addEventListener('keydown', (e) => {
   if (e.key === 'Enter') { e.preventDefault(); createListFromInput(); }
@@ -960,6 +978,7 @@ $('#grid').addEventListener('drop', async (e) => {
 $('#detail-content').addEventListener('click', async (e) => {
   const t = e.target;
   if (t.classList.contains('spoiler')) { t.classList.toggle('revealed'); return; }
+  if (t.id === 'detail-create-list') { openLists(); return; }
   const chip = t.closest('.list-chip');
   if (chip) {
     await toggleListMembership(chip.dataset.listId, currentMediaId);
@@ -1040,3 +1059,22 @@ $('#f-clear-image').addEventListener('click', () => {
 });
 
 refresh();
+
+// Startup intro: dismiss the splash (auto, or on click/key) and replay the
+// card stagger as the app is revealed.
+(function initSplash() {
+  const splash = $('#splash');
+  if (!splash) return;
+  let done = false;
+  function hide() {
+    if (done) return;
+    done = true;
+    splash.classList.add('hidden');
+    animateGrid = true;
+    render();
+  }
+  splash.addEventListener('animationend', hide);
+  splash.addEventListener('click', hide);
+  window.addEventListener('keydown', hide, { once: true });
+  setTimeout(hide, 2000);   // safety net if animationend doesn't fire
+})();

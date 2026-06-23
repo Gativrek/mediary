@@ -10,6 +10,14 @@
 </head>
 <body>
 
+  <!-- startup intro: logo + name begin centered, then settle into the header -->
+  <div id="splash">
+    <div class="splash-brand">
+      <img src="icon.png" alt="">
+      <span>Mediary</span>
+    </div>
+  </div>
+
   <header>
     <div class="brand">
       <img class="brand-logo" src="icon.png" alt="">
@@ -24,33 +32,45 @@
     </div>
 
     <div class="filters">
-      <select id="filter-type">
-        <option value="">Type</option>
-        <option value="game">Games</option>
-        <option value="movie">Movies</option>
-        <option value="tv">TV Shows</option>
-        <option value="anime">Anime</option>
-        <option value="book">Books</option>
-        <option value="music">Music</option>
-        <option value="other">Other</option>
-      </select>
-      <select id="filter-status">
-        <option value="">Status</option>
-        <option value="completed">Completed</option>
-        <option value="in-progress">In progress</option>
-        <option value="dropped">Dropped</option>
-        <option value="backlog">Backlog</option>
-        <option value="wishlist">Wishlist</option>
-      </select>
-      <select id="filter-tag">
-        <option value="">Tags</option>
-      </select>
-      <select id="sort-by">
-        <option value="recent">Recent</option>
-        <option value="title">Title</option>
-        <option value="rating">Rating</option>
-        <option value="year">Year</option>
-      </select>
+      <label class="filter-field">
+        <span class="filter-label">Type</span>
+        <select id="filter-type">
+          <option value="">All</option>
+          <option value="game">Games</option>
+          <option value="movie">Movies</option>
+          <option value="tv">TV Shows</option>
+          <option value="anime">Anime</option>
+          <option value="book">Books</option>
+          <option value="music">Music</option>
+          <option value="other">Other</option>
+        </select>
+      </label>
+      <label class="filter-field">
+        <span class="filter-label">Status</span>
+        <select id="filter-status">
+          <option value="">All</option>
+          <option value="completed">Completed</option>
+          <option value="in-progress">In progress</option>
+          <option value="dropped">Dropped</option>
+          <option value="backlog">Backlog</option>
+          <option value="wishlist">Wishlist</option>
+        </select>
+      </label>
+      <label class="filter-field">
+        <span class="filter-label">Tags</span>
+        <select id="filter-tag">
+          <option value="">All</option>
+        </select>
+      </label>
+      <label class="filter-field">
+        <span class="filter-label">Sort</span>
+        <select id="sort-by">
+          <option value="recent">Recent</option>
+          <option value="title">Title</option>
+          <option value="rating">Rating</option>
+          <option value="year">Year</option>
+        </select>
+      </label>
     </div>
 
     <button id="filter-fav" class="icon-btn fav-toggle" title="Show favorites only" aria-label="Show favorites only" aria-pressed="false">
@@ -119,7 +139,13 @@
       </div>
     </div>
     <div id="grid"></div>
-    <p id="empty" class="muted" style="display:none">Nothing logged yet. Click the + button to start.</p>
+    <div id="empty" class="empty-state" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+      </svg>
+      <h2>Nothing logged yet</h2>
+      <p class="muted">Tap the <strong>+</strong> button to log your first game, movie, show, book or album.</p>
+    </div>
   </main>
 
   <!-- Add a new entry (media + first log), or edit a media item's info -->

@@ -106,6 +106,35 @@ button.ghost:hover {
   font-size: 13px;
 }
 
+/* Uppercase + bold the system/UI chrome (buttons, field labels, filter pills,
+   type/status badges) to set it apart from user content. User content —
+   titles, reviews, tags, list names — and the logo keep their natural case. */
+button,
+.lbl,
+.filter-label,
+.filters select,
+.badge-type,
+.badge-completed,
+.badge-in-progress,
+.badge-dropped,
+.badge-backlog,
+.badge-wishlist {
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  font-weight: 700;
+}
+/* smaller sizes for the larger chrome (badges already small, left as-is) */
+button, .filters select { font-size: 12px; }
+.lbl, .filter-label { font-size: 11px; }
+/* content-bearing buttons must stay natural case and weight */
+.autofill-item,
+.list-chip {
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+  font-size: 14px;
+}
+
 input, select, textarea {
   font: inherit;
   background: rgba(0, 0, 0, 0.25);
@@ -129,6 +158,52 @@ option {
   color: var(--text);
 }
 
+/* ---------- startup intro ---------- */
+
+#splash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  animation: splashFade 1.6s ease forwards;
+}
+#splash.hidden { display: none; }
+.splash-brand {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  animation: splashMove 1.6s cubic-bezier(0.6, 0.1, 0.2, 1) forwards;
+}
+.splash-brand img {
+  width: 92px;
+  height: 92px;
+  border-radius: 22px;
+  box-shadow: 0 12px 44px rgba(0, 0, 0, 0.5);
+}
+.splash-brand span {
+  font-size: 60px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  background: linear-gradient(90deg, #cdb9f2, #8db9e8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+@keyframes splashFade {
+  0%, 55% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes splashMove {
+  0%, 30% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-38vw, -42vh) scale(0.3); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #splash { animation: none; opacity: 0; pointer-events: none; }
+}
+
 /* ---------- header ---------- */
 
 header {
@@ -137,9 +212,9 @@ header {
   z-index: 5;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
-  padding: 11px 20px;
+  padding: 11px 16px;
   background: rgba(20, 22, 28, 0.55);
   backdrop-filter: blur(24px) saturate(180%);
   border-bottom: 1px solid var(--border-bright);
@@ -164,8 +239,8 @@ header {
   color: transparent;
 }
 
-/* search with leading icon */
-.search-wrap { position: relative; display: flex; align-items: center; }
+/* search with leading icon — shrinks before the filters wrap */
+.search-wrap { position: relative; display: flex; align-items: center; flex: 0 1 180px; min-width: 120px; }
 .search-ic {
   position: absolute;
   left: 11px;
@@ -175,32 +250,50 @@ header {
   pointer-events: none;
 }
 .search-wrap input[type=search] {
-  width: 230px;
+  width: 100%;
   padding: 8px 12px 8px 34px;
   border-radius: 999px;
 }
 
-/* filter pills */
-.filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.filters select {
-  width: auto;
+/* filter pills: a static label prefix + the select, merged into one pill */
+.filters { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.filter-field {
+  display: inline-flex;
+  align-items: center;
   border-radius: 999px;
-  padding: 8px 32px 8px 14px;          /* right room for the custom chevron */
-  cursor: pointer;
-  border-color: var(--border-bright);
-  /* strip the OS chevron and draw our own */
-  appearance: none;
-  -webkit-appearance: none;
   background-color: rgba(255, 255, 255, 0.04);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239aa0b0' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s;
+  border: 1px solid var(--border-bright);
+  padding-left: 10px;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
 }
-.filters select:hover {
+.filter-field:hover {
   background-color: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.28);
 }
+.filter-field:focus-within { border-color: var(--accent); }
+.filter-label {
+  font-size: 12px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.filters select {
+  width: auto;
+  border: none;
+  background-color: transparent;
+  border-radius: 999px;
+  padding: 7px 23px 7px 5px;            /* right room for the custom chevron */
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 600;
+  /* strip the OS chevron and draw our own */
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239aa0b0' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+}
+.filters select:focus { outline: none; box-shadow: none; }
 
 .spacer { flex: 1; }
 
@@ -520,16 +613,27 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 /* ---------- favorites ---------- */
 
 /* heart badge on a favorited card */
+/* favorite marker: a folded corner ribbon in the top-right of the cover */
 .card-fav {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 0;
+  right: 0;
   z-index: 2;
-  font-size: 17px;
-  line-height: 1;
-  color: #ff5e7a;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+  width: 32px;
+  height: 32px;
   pointer-events: none;
+  background: linear-gradient(225deg, #ff5e7a 0%, #e63a64 50%, transparent 50%);
+  border-top-right-radius: 9px;
+  filter: drop-shadow(-1px 1px 2px rgba(0, 0, 0, 0.35));
+}
+.card-fav::after {
+  content: "♥";
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  font-size: 11px;
+  line-height: 1;
+  color: #fff;
 }
 
 /* header heart toggle */
@@ -595,27 +699,44 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 .list-banner-text .list-hint { margin: 6px 0 0; opacity: 0.7; }
 
 /* list create form */
-.list-create { display: flex; flex-wrap: wrap; gap: 8px; }
-.list-create #list-new-name { flex: 2; min-width: 160px; }
+/* list create form — sits in a subtle panel */
+.list-create {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+}
+.list-create #list-new-name { flex: 2; min-width: 150px; }
 .list-create #list-new-desc { flex: 3; min-width: 160px; }
 .list-create button { white-space: nowrap; }
 
-/* list manager rows */
-#lists-list { margin-top: 14px; }
+/* list manager rows — each its own card */
+#lists-list { margin-top: 16px; display: flex; flex-direction: column; gap: 10px; }
 .list-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 4px;
-  border-bottom: 1px solid var(--border);
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--border);
+  transition: border-color 0.15s, background 0.15s;
 }
-.list-row:last-child { border-bottom: none; }
+.list-row:hover { background: rgba(255, 255, 255, 0.05); border-color: var(--border-bright); }
 .list-row-main { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.list-row-main strong { font-size: 15px; }
 .list-row-desc { line-height: 1.4; }
+/* row action links: tuck them together, reveal stronger on hover */
+.list-row .link-btn { opacity: 0.75; transition: opacity 0.15s, color 0.15s; }
+.list-row:hover .link-btn { opacity: 1; }
+.list-delete-btn:hover { color: #e89a9a; }
 
 /* inline list editor */
-.list-edit-form { flex: 1; display: flex; flex-direction: column; gap: 6px; }
-.list-edit-actions { display: flex; align-items: center; gap: 10px; }
+.list-edit-form { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.list-edit-actions { display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
 
 /* add-to-list chips in the detail view */
 .lists-section { margin: 16px 0 4px; }
@@ -680,7 +801,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
   width: 100%;
   max-width: 480px;
   aspect-ratio: 16 / 9;
-  margin-top: 10px;
+  margin: 12px auto 4px;
   border-radius: 10px;
   overflow: hidden;
   border: 1px solid var(--border);
@@ -730,7 +851,35 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
   background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
 }
 
-#empty { text-align: center; margin-top: 60px; }
+/* friendly empty states (grid + empty list) */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 6px;
+  padding: 70px 20px;
+  color: var(--muted);
+}
+.empty-state svg { width: 56px; height: 56px; opacity: 0.4; margin-bottom: 8px; }
+.empty-state h2 { margin: 0; font-size: 19px; color: var(--text); }
+.empty-state p { margin: 0; max-width: 360px; line-height: 1.5; }
+
+/* staggered card entrance on data load (not on filtering) */
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(12px); }
+}
+#grid.animate-in .shelf-grid .card { animation: cardIn 0.34s ease backwards; }
+#grid.animate-in .shelf-grid .card:nth-child(1) { animation-delay: 0ms; }
+#grid.animate-in .shelf-grid .card:nth-child(2) { animation-delay: 35ms; }
+#grid.animate-in .shelf-grid .card:nth-child(3) { animation-delay: 70ms; }
+#grid.animate-in .shelf-grid .card:nth-child(4) { animation-delay: 105ms; }
+#grid.animate-in .shelf-grid .card:nth-child(5) { animation-delay: 140ms; }
+#grid.animate-in .shelf-grid .card:nth-child(6) { animation-delay: 175ms; }
+#grid.animate-in .shelf-grid .card:nth-child(7) { animation-delay: 210ms; }
+#grid.animate-in .shelf-grid .card:nth-child(8) { animation-delay: 245ms; }
+#grid.animate-in .shelf-grid .card:nth-child(n+9) { animation-delay: 280ms; }
 
 /* ---------- autofill ---------- */
 
