@@ -3,7 +3,7 @@
 // the disk directly; it asks for things over IPC (see preload.js). When we
 // later migrate JSON -> SQLite -> a real server, only this file changes.
 
-const { app, BrowserWindow, ipcMain, dialog, shell, protocol, net } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, protocol, net, session } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const crypto = require('node:crypto');
@@ -131,6 +131,18 @@ app.whenReady().then(() => {
 
   settingsFile = path.join(app.getPath('userData'), 'settings.json');
   loadSettings();
+
+  // YouTube embeds fail with a "player configuration error" (153) when they
+  // arrive with no valid web referrer — which is the case here, since the UI
+  // loads over file://. Give requests to YouTube a real Referer/Origin so the
+  // player treats them like a normal website embed.
+  session.defaultSession.webRequest.onBeforeSendHeaders(
+    { urls: ['*://*.youtube.com/*', '*://*.youtube-nocookie.com/*', '*://*.ytimg.com/*', '*://*.googlevideo.com/*'] },
+    (details, callback) => {
+      details.requestHeaders['Referer'] = 'https://www.youtube.com/';
+      details.requestHeaders['Origin'] = 'https://www.youtube.com';
+      callback({ requestHeaders: details.requestHeaders });
+    });
 
   // Serve stored cover images at media-img://img/<filename>
   protocol.handle('media-img', (request) => {
